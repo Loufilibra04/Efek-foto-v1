@@ -84,19 +84,20 @@
         <section class="w-full lg:w-1/2 p-4 lg:p-8 bg-black bg-opacity-30 rounded-xl neon-border">
             <h2 class="text-2xl font-bold mb-4 orbitron">Unggah Foto</h2>
             <div id="drop-area" class="border-4 border-dashed border-gray-600 rounded-xl p-8 text-center cursor-pointer transition-colors duration-200 hover:border-cyan-400 hover:text-cyan-400">
+                <p class="text-xl mb-2">unggah foto di bawah</p>
                 <p class="text-sm text-gray-400 mb-4">😁👇</p>
                 <button id="upload-button" class="neon-button bg-purple-600 text-white px-6 py-3 rounded-full font-bold">Pilih Foto dari Perangkat</button>
                 <input type="file" id="file-input" class="hidden" accept="image/*">
             </div>
             
             <div id="upload-status" class="mt-4 text-center hidden">
-                <p class="text-green-400">berhasil</p>
+                <p class="text-green-400">Foto berhasil diunggah</p>
             </div>
         </section>
 
         <!-- Preview & Effects Section -->
         <section class="w-full lg:w-1/2 p-4 lg:p-8 bg-black bg-opacity-30 rounded-xl neon-border flex flex-col items-center">
-            <h2 class="text-2xl font-bold mb-4 orbitron text-center">DI SINI GAN</h2>
+            <h2 class="text-2xl font-bold mb-4 orbitron text-center">Pratinjau & Efek</h2>
             <div class="relative w-full max-w-sm sm:max-w-md md:max-w-lg mb-6">
                 <!-- Canvas untuk pratinjau dan pengeditan -->
                 <canvas id="image-canvas" width="600" height="400" class="w-full"></canvas>
@@ -119,7 +120,7 @@
 
     <!-- Footer -->
     <footer class="text-center text-sm text-gray-500 mt-auto p-4">
-        MADE BY D'BAGINDAS
+        Dibuat oleh d'bagindas
     </footer>
 
     <script>
@@ -143,7 +144,7 @@
                 imageCanvas.height = placeholderImage.height;
                 ctx.drawImage(placeholderImage, 0, 0);
             };
-            placeholderImage.src = 'https://placehold.co/600x400/000000/FFFFFF?text=HASILNYA';
+            placeholderImage.src = 'https://placehold.co/600x400/000000/FFFFFF?text=hasilnya di sini';
 
             // Function to enable all buttons
             function enableButtons() {
@@ -231,26 +232,29 @@
 
                     // Terapkan efek berdasarkan tipe filter
                     if (filterType === 'filter-pink-green') {
-                        // Menggunakan interpolasi yang lebih lembut untuk duotone
-                        const shadowColor = { r: 20, g: 80, b: 20 }; // Hijau yang lebih gelap
-                        const highlightColor = { r: 200, g: 80, b: 200 }; // Pink yang lebih lembut
+                        // Mendefinisikan warna utama dan highlight
+                        const shadowColor = { r: 10, g: 80, b: 10 }; // Hijau tua untuk bayangan
+                        const highlightColor = { r: 255, g: 120, b: 200 }; // Pink keunguan untuk cahaya
                         
+                        // Menyesuaikan faktor kecerahan
                         const factor = grayscale / 255;
+
+                        // Interpolasi warna untuk menciptakan efek duotone yang halus
                         data[i] = Math.round(shadowColor.r + (highlightColor.r - shadowColor.r) * factor);
                         data[i + 1] = Math.round(shadowColor.g + (highlightColor.g - shadowColor.g) * factor);
                         data[i + 2] = Math.round(shadowColor.b + (highlightColor.b - shadowColor.b) * factor);
 
                     } else if (filterType === 'filter-blue-neon') {
                         // Mengatur nilai RGB untuk efek neon yang lebih halus
-                        data[i] = Math.round(grayscale * 0.6);
+                        data[i] = Math.round(grayscale * 0.9);
                         data[i + 1] = Math.round(grayscale * 1.0);
-                        data[i + 2] = Math.round(grayscale * 1.2);
+                        data[i + 2] = Math.round(grayscale * 1.1);
 
                     } else if (filterType === 'filter-purple-aesthetic') {
                          // Mengatur nilai RGB untuk efek ungu yang tidak terlalu terang
-                        data[i] = Math.round(grayscale * 1.1);
-                        data[i + 1] = Math.round(grayscale * 0.6);
-                        data[i + 2] = Math.round(grayscale * 1.1);
+                        data[i] = Math.round(grayscale * 1.0);
+                        data[i + 1] = Math.round(grayscale * 0.8);
+                        data[i + 2] = Math.round(grayscale * 1.0);
 
                     } else if (filterType === 'filter-glitch') {
                         // Efek glitch sederhana dengan memanipulasi saluran warna
@@ -259,8 +263,8 @@
                         data[i + 2] = r;
 
                     } else if (filterType === 'filter-gradient-pop') {
-                        const orange = { r: 200, g: 120, b: 0 };
-                        const yellow = { r: 255, g: 255, b: 0 };
+                        const orange = { r: 240, g: 160, b: 60 };
+                        const yellow = { r: 255, g: 255, b: 180 };
                         
                         const factor = grayscale / 255;
                         data[i] = Math.round(orange.r + (yellow.r - orange.r) * factor);
@@ -289,16 +293,23 @@
                 }
             });
 
-            // Download image from canvas
+            // Download image with a more reliable method
             downloadButton.addEventListener('click', () => {
                 if (!uploadedImage || downloadButton.disabled) {
                     return;
                 }
                 
-                const link = document.createElement('a');
-                link.download = 'photo-effect-lab-result.png';
-                link.href = imageCanvas.toDataURL('image/png');
-                link.click();
+                // Konversi kanvas menjadi Blob (binary data)
+                imageCanvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'photo-effect-lab-result.png';
+                    document.body.appendChild(link); // Penting untuk beberapa browser
+                    link.click();
+                    document.body.removeChild(link); // Hapus link setelah unduh dimulai
+                    URL.revokeObjectURL(url); // Bersihkan URL objek
+                });
             });
         });
     </script>
