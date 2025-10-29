@@ -111,6 +111,14 @@
             border: none !important; /* Hapus border skill node */
         }
 
+        /* Styling untuk gambar di dalam skill node */
+        .skill-node img {
+            width: 80%; /* Atur ukuran gambar agar pas di dalam node */
+            height: 80%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.8)); /* Tambahkan sedikit bayangan pada gambar */
+        }
+
         /* Styling untuk bar XP/Level */
         .xp-bar-bg {
             background-color: rgba(55, 65, 81, 0.8); /* Sedikit transparan */
@@ -136,10 +144,16 @@
 </head>
 <body class="">
 
-    <!-- Kontainer Utama Aplikasi (Overlay Full Layar) --><div id="app-container" class="">
+    
 
-        <!-- HEADER UI GAME (Status Bar) --><header class="flex justify-between items-center p-4">
-            <!-- Profil Singkat --><div id="header-profile" class="flex items-center space-x-3 p-2 rounded-full shadow-xl">
+<div id="app-container" class="">
+
+        
+
+<header class="flex justify-between items-center p-4">
+            
+
+<div id="header-profile" class="flex items-center space-x-3 p-2 rounded-full shadow-xl">
                 <img id="profile-avatar-sm" src="https://i.supaimg.com/05ce630e-a6e3-448c-89ad-efaab61782e2.jpg" class="rounded-full w-10 h-10 border-2 border-yellow-400 object-cover" alt="Avatar">
                 <div>
                     <span class="text-sm font-bold text-yellow-300" id="profile-name-header">Aulia Novice</span>
@@ -152,7 +166,9 @@
                 </div>
             </div>
 
-            <!-- Sumber Daya (Resources) --><div class="flex space-x-4">
+            
+
+<div class="flex space-x-4">
                 <div class="flex items-center space-x-2 bg-gray-800 p-2 rounded-full text-sm">
                     <i data-lucide="hourglass" class="w-5 h-5 text-indigo-400 resource-icon"></i>
                     <span id="resource-crystal">530</span>
@@ -167,10 +183,16 @@
             </div>
         </header>
 
-        <!-- KONTEN UTAMA (Tempat Halaman Dimuat) --><main id="main-content" class="min-h-[70vh]">
-            <!-- Konten akan dimuat di sini oleh JS --></main>
+        
 
-        <!-- FOOTER UI GAME (Navigation Bar / World Map Icons) --><footer class="p-4 flex justify-center space-x-8 md:space-x-16">
+<main id="main-content" class="min-h-[70vh]">
+            
+
+</main>
+
+        
+
+<footer class="p-4 flex justify-center space-x-8 md:space-x-16">
             <button onclick="navigate('map')" id="nav-map" class="nav-icon-container flex flex-col items-center text-xs text-gray-400 hover:text-white transition duration-200 p-2 rounded-lg active-nav-icon">
                 <i data-lucide="map" class="w-8 h-8 md:w-10 md:h-10 text-red-400"></i>
                 <span class="mt-1">Peta Dunia</span>
@@ -194,7 +216,9 @@
         </footer>
     </div>
 
-    <!-- JavaScript untuk Navigasi, Data, dan Rendering --><script>
+    
+
+<script>
         // --- DATA PORTFOLIO ---
         const portfolioData = {
             name: "Aulia Novice",
@@ -214,12 +238,13 @@
                 { trait: "Neurotisisme (Neuroticism)", value: 55 },
             ],
             skills: {
-                center: { name: "Otak Logika (Core)", icon: "brain-circuit", color: "text-purple-400" },
+                // Menggunakan imageUrl untuk skill nodes
+                center: { name: "Otak Logika (Core)", imageUrl: "https://i.supaimg.com/31b41f34-966d-48aa-9658-6e60474bdabe.jpg", color: "text-purple-400" },
                 nodes: [
-                    { id: 'n1', name: "DevOps", icon: "cloud-cog", color: "text-blue-400", level: 80, details: ["AWS", "Docker", "Kubernetes", "CI/CD"] },
-                    { id: 'n2', name: "Frontend", icon: "layout-grid", color: "text-green-400", level: 90, details: ["React", "Vue.js", "Tailwind CSS", "Aestetics"] },
-                    { id: 'n3', name: "Backend", icon: "server", color: "text-yellow-400", level: 85, details: ["Python (Django/Flask)", "Node.js (Express)", "Golang", "Microservices"] },
-                    { id: 'n4', name: "Data/ML", icon: "bar-chart-2", color: "text-red-400", level: 75, details: ["Python (Pandas, Scikit)", "SQL/NoSQL", "Data Modeling", "TensorFlow (Dasar)"] }
+                    { id: 'n1', name: "DevOps", imageUrl: "https://i.supaimg.com/7ab13293-96c7-4296-af8f-994a359d1da3.jpg", level: 80, details: ["AWS", "Docker", "Kubernetes", "CI/CD"] },
+                    { id: 'n2', name: "Frontend", imageUrl: "https://i.supaimg.com/bf4ae05b-2717-4c38-91ac-8d5c910b073c.jpg", level: 90, details: ["React", "Vue.js", "Tailwind CSS", "Aestetics"] },
+                    { id: 'n3', name: "Backend", imageUrl: "https://i.supaimg.com/8ddb192c-1fcb-4dec-8c81-fcb16f13728e.jpg", level: 85, details: ["Python (Django/Flask)", "Node.js (Express)", "Golang", "Microservices"] },
+                    { id: 'n4', name: "Data/ML", imageUrl: "https://i.supaimg.com/aed2bd10-4d55-4f2b-ab06-66784d37538f.jpg", level: 75, details: ["Python (Pandas, Scikit)", "SQL/NoSQL", "Data Modeling", "TensorFlow (Dasar)"] }
                 ]
             },
             quests: [ // Proyek
@@ -299,7 +324,9 @@
             contentDiv.innerHTML = `
                 <h2 class="text-3xl font-bold mb-6 text-yellow-300 border-b border-indigo-600 pb-2">PROFIL PAHLAWAN</h2>
                 <div class="grid md:grid-cols-2 gap-8">
-                    <!-- Kartu Karakter/Statistik --><div class="game-content-panel p-6 rounded-xl shadow-2xl">
+                    
+
+<div class="game-content-panel p-6 rounded-xl shadow-2xl">
                         <div class="flex items-center space-x-4 mb-4">
                             <img src="https://i.supaimg.com/05ce630e-a6e3-448c-89ad-efaab61782e2.jpg" class="rounded-lg border-4 border-yellow-400 w-24 h-24 object-cover" alt="Avatar Pixel">
                             <div>
@@ -308,7 +335,9 @@
                             </div>
                         </div>
 
-                        <!-- Level & XP Bar --><div class="mt-4">
+                        
+
+<div class="mt-4">
                             <div class="flex justify-between text-lg font-bold">
                                 <span class="text-yellow-400">Lv. ${portfolioData.level}</span>
                                 <span class="text-sm text-gray-400">${portfolioData.xp} / ${portfolioData.xpMax} XP</span>
@@ -323,13 +352,17 @@
                         </p>
                     </div>
 
-                    <!-- Statistik Kepribadian/Keterampilan Lunak --><div class="game-content-panel p-6 rounded-xl shadow-2xl">
+                    
+
+<div class="game-content-panel p-6 rounded-xl shadow-2xl">
                         <h3 class="text-xl font-bold mb-4 text-indigo-400 border-b border-gray-700 pb-2">STATISTIK KEPRIBADIAN</h3>
                         ${personalityHtml}
                     </div>
                 </div>
                 
-                <!-- Kontak (Item Toko/Hubungi) --><div class="game-content-panel p-6 rounded-xl shadow-2xl mt-8">
+                
+
+<div class="game-content-panel p-6 rounded-xl shadow-2xl mt-8">
                     <h3 class="text-xl font-bold mb-4 text-red-400 border-b border-gray-700 pb-2">INVENTARIS & KONTAK</h3>
                     <div class="flex flex-wrap gap-4">
                         <a href="#" class="flex items-center space-x-2 text-white hover:text-red-400 transition" target="_blank">
@@ -359,11 +392,13 @@
             const centerNode = portfolioData.skills.center;
             const nodes = portfolioData.skills.nodes;
 
-            // Membangun HTML untuk node dan garis (simulasi visual)
-            let nodesHtml = `<div id="skill-center" class="skill-node relative w-24 h-24 rounded-full flex flex-col items-center justify-center bg-purple-900 shadow-xl z-10" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                <i data-lucide="${centerNode.icon}" class="w-10 h-10 ${centerNode.color}"></i>
-                <span class="text-xs mt-1 font-bold text-white text-center">${centerNode.name}</span>
-            </div>`;
+            // Membangun HTML untuk node tengah (CORE)
+            let nodesHtml = `
+                <div id="skill-center" class="skill-node relative w-24 h-24 rounded-full flex flex-col items-center justify-center bg-purple-900 shadow-xl z-10" 
+                     style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                    <img src="${centerNode.imageUrl}" alt="${centerNode.name}" class="rounded-full w-16 h-16 object-cover" />
+                    <span class="text-xs mt-1 font-bold text-white text-center">${centerNode.name}</span>
+                </div>`;
 
             // Posisi relatif untuk node (simulasi radial)
             const nodePositions = [
@@ -381,7 +416,7 @@
                     <div id="skill-${node.id}" class="skill-node relative w-20 h-20 rounded-full flex flex-col items-center justify-center bg-gray-900 shadow-xl z-10" 
                          style="${nodeStyle}" 
                          onclick="showSkillDetails('${node.id}')">
-                        <i data-lucide="${node.icon}" class="w-8 h-8 ${node.color}"></i>
+                        <img src="${node.imageUrl}" alt="${node.name}" class="rounded-full w-12 h-12 object-cover" />
                         <span class="text-xs mt-1 font-bold text-white text-center">${node.name}</span>
                     </div>
                 `;
@@ -390,10 +425,14 @@
             // Container untuk Skill Tree
             contentDiv.innerHTML = `
                 <h2 class="text-3xl font-bold mb-6 text-yellow-300 border-b border-indigo-600 pb-2 w-full text-center">POHON KEAHLIAN (SKILL TREE)</h2>
-                <div class="relative w-full h-[600px] game-content-panel p-4 flex items-center justify-center">
-                    <!-- Area untuk node dan garis -->${nodesHtml}
+                <div class="relative w-full h-[600px] game-content-panel p-4 flex items-center justify-center overflow-hidden">
+                    
+
+${nodesHtml}
                 </div>
-                <!-- Panel Detail Skill --><div id="skill-details-panel" class="game-content-panel mt-6 p-4 w-full md:w-1/2 rounded-xl border-t-4 border-yellow-500 hidden">
+                
+
+<div id="skill-details-panel" class="game-content-panel mt-6 p-4 w-full md:w-1/2 rounded-xl hidden">
                     <h3 class="text-xl font-bold text-yellow-300 mb-2" id="skill-detail-title">Pilih Node Keahlian</h3>
                     <p class="text-sm text-gray-400" id="skill-detail-level">Level: -</p>
                     <ul class="list-disc list-inside mt-2 text-gray-300" id="skill-detail-list">
@@ -402,6 +441,7 @@
                 </div>
             `;
             
+            // Render ulang ikon Lucide (walaupun di skill tree kita pakai image, lucide masih dipakai di tempat lain)
             renderIcons();
         }
 
