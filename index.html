@@ -3,546 +3,805 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aulia Novice - Portofolio Gamifikasi</title>
-    
+    <title>PointVerse - The Cyber-Social Nexus</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+    <!-- Load Orbitron Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+    <!-- Load Lucide Icons for Web -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* Mengatur font dan background seperti UI game gelap */
+        /* Konfigurasi Tailwind CSS untuk menggunakan font dan warna kustom */
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-dark': 'var(--color-bg-dark, #0A0A0A)',
+                        'neon-main': 'var(--color-neon-main, #00FFF0)',
+                        'neon-accent': 'var(--color-neon-accent, #FF00FF)',
+                    },
+                    fontFamily: {
+                        sans: ['Orbitron', 'sans-serif'],
+                        display: ['Orbitron', 'sans-serif'],
+                    }
+                }
+            }
+        }
+        /* --- CUSTOM CSS: TEMA DAN EFEK NEON --- */
         body {
-            font-family: 'Inter', sans-serif;
-            /* Latar belakang utama aplikasi */
-            background-image: url('https://i.supaimg.com/bf582b43-bdcf-41ac-8795-c3a1b971bbd6.jpg');
-            background-size: cover; 
-            background-position: center; 
-            background-repeat: no-repeat; 
-            background-attachment: fixed; 
+            /* Default Neon Cyber Theme */
+            --color-bg-dark: #0A0A0A;
+            --color-neon-main: #00FFF0; /* Cyan */
+            --color-neon-accent: #FF00FF; /* Magenta */
+            --shadow-glow: 0 0 8px var(--color-neon-main), 0 0 15px var(--color-neon-accent);
+            --card-border-color: rgba(0, 255, 240, 0.3);
+            --xp-gradient: linear-gradient(90deg, #FF00FF, #00FFF0);
+
+            background-color: var(--color-bg-dark);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
             min-height: 100vh;
-            color: #e5e7eb;
-            overflow-x: hidden;
-            padding: 0; /* Hapus padding body */
+            transition: all 0.5s ease;
         }
 
-        /* Kontainer utama aplikasi (#app-container) sekarang akan menjadi overlay gelap transparan full layar */
-        #app-container {
-            width: 100vw; /* Isi seluruh lebar viewport */
-            height: 100vh; /* Isi seluruh tinggi viewport */
-            max-width: none; /* Hapus batasan lebar */
-            margin: 0; /* Hapus margin otomatis */
-            border: none; /* Hapus border */
-            box-shadow: none; /* Hapus box-shadow */
-            background-image: none; /* Hapus background image dari app-container */
-            background-color: rgba(0, 0, 0, 0.75); /* Overlay hitam transparan yang menutupi gambar latar belakang body */
-            position: fixed; /* Jadikan fixed agar selalu full layar */
+        /* Tema 1: Neon Cyber (Default) */
+        .theme-neon-cyber {
+            --color-bg-dark: #0A0A0A;
+            --color-neon-main: #00FFF0; /* Cyan */
+            --color-neon-accent: #FF00FF; /* Magenta */
+            --shadow-glow: 0 0 8px var(--color-neon-main), 0 0 15px var(--color-neon-accent);
+            --card-border-color: rgba(0, 255, 240, 0.3);
+            --xp-gradient: linear-gradient(90deg, #FF00FF, #00FFF0);
+        }
+
+        /* Tema 2: Tech Minimalist */
+        .theme-tech-minimalist {
+            --color-bg-dark: #1F2937; /* Darker Slate */
+            --color-neon-main: #6EE7B7; /* Emerald */
+            --color-neon-accent: #3B82F6; /* Blue */
+            --shadow-glow: 0 0 6px var(--color-neon-main);
+            --card-border-color: rgba(110, 231, 183, 0.4);
+            --xp-gradient: linear-gradient(90deg, #3B82F6, #6EE7B7);
+        }
+
+        /* Tema 3: Galaxy Purple */
+        .theme-galaxy-purple {
+            --color-bg-dark: #240046; /* Deep Violet */
+            --color-neon-main: #C084FC; /* Purple */
+            --color-neon-accent: #F97316; /* Orange */
+            --shadow-glow: 0 0 10px var(--color-neon-main), 0 0 20px rgba(249, 115, 22, 0.5);
+            --card-border-color: rgba(192, 132, 252, 0.5);
+            --xp-gradient: linear-gradient(90deg, #F97316, #C084FC);
+        }
+
+        /* Gaya Khusus untuk Kartu/Panel */
+        .cyber-card {
+            background-color: rgba(10, 10, 10, 0.5);
+            border: 1px solid var(--card-border-color);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .cyber-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+        .cyber-card::before {
+            content: '';
+            position: absolute;
             top: 0;
             left: 0;
-            z-index: 0; /* Pastikan di bawah header/footer tapi di atas body background */
-            display: flex; /* Gunakan flexbox untuk menata header, main, footer */
-            flex-direction: column;
-            border-radius: 0; /* Hapus border-radius */
-            overflow: hidden; /* Konten di dalamnya akan di-scroll jika perlu */
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            pointer-events: none;
         }
 
-        /* Header dan Footer */
-        header, footer {
-            background-color: rgba(17, 24, 39, 0.95); /* Sedikit lebih gelap dari overlay utama */
-            backdrop-filter: blur(5px); 
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7); 
-            z-index: 1; /* Pastikan di atas app-container overlay */
-            border-bottom: none; /* Hapus border */
-            border-top: none; /* Hapus border */
+        /* Gaya untuk Tombol Neon */
+        .neon-button {
+            color: var(--color-neon-main);
+            border: 1px solid var(--color-neon-main);
+            box-shadow: 0 0 5px var(--color-neon-main);
+            background-color: transparent;
+            transition: all 0.2s ease;
+        }
+        .neon-button:hover {
+            color: var(--color-bg-dark);
+            background-color: var(--color-neon-main);
+            box-shadow: 0 0 15px var(--color-neon-main);
+            transform: translateY(-1px);
+        }
+        .neon-button:active {
+            transform: translateY(0);
         }
 
-        /* main-content harus bisa di-scroll dan tumbuh mengisi ruang */
-        #main-content {
-            flex-grow: 1; /* Biarkan main-content tumbuh mengisi ruang vertikal yang tersedia */
-            overflow-y: auto; /* Aktifkan scroll vertikal jika konten main-content melebihi tinggi */
-            padding: 1.5rem 3rem; /* Sesuaikan padding */
-            z-index: 1; /* Pastikan di atas app-container overlay */
-            position: relative;
-        }
-
-        /* General panel styling (untuk kotak konten di dalam main-content) */
-        .game-content-panel {
-            background-color: rgba(17, 24, 39, 0.7); /* Panel konten lebih transparan, hanya gelap */
-            border: none; /* Hapus border */
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Pertahankan sedikit bayangan */
-            border-radius: 0.75rem; /* rounded-xl */
-        }
-
-        /* Header profil kecil */
-        #header-profile {
-             background-color: rgba(22, 28, 41, 0.8); /* Agak transparan */
-             border: none; /* Hapus border */
-             box-shadow: 0 2px 5px rgba(0,0,0,0.5); /* Bayangan lembut */
-        }
-
-        /* Resource icons (hourglass, gem) */
-        .flex.items-center.space-x-2.bg-gray-800 {
-            background-color: rgba(22, 28, 41, 0.8); /* Agak transparan */
-            border: none; /* Hapus border */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-        }
-
-        /* Navigasi Footer */
-        .nav-icon-container {
-            border: none; /* Hapus border dari tombol navigasi */
-            box-shadow: none; /* Hapus box-shadow default */
-            background-color: transparent; /* Pastikan transparan */
-        }
-        .active-nav-icon {
-            border: none; /* Hapus border aktif */
-            box-shadow: 0 0 15px rgba(253, 202, 27, 0.8); /* Pertahankan glow */
-            background-color: rgba(253, 202, 27, 0.1); /* Background samar saat aktif */
-        }
-
-        /* Animasi Keterampilan (Skill Tree) */
-        @keyframes glow {
-            0% { box-shadow: 0 0 5px rgba(253, 202, 27, 0.3); }
-            50% { box-shadow: 0 0 10px rgba(253, 202, 27, 0.8); }
-            100% { box-shadow: 0 0 5px rgba(253, 202, 27, 0.3); }
-        }
-
-        .skill-node {
-            animation: glow 3s infinite alternate;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: none !important; /* Hapus border skill node */
-            overflow: hidden; 
-        }
-        
-        /* Styling untuk Ikon di dalam skill node */
-        .skill-node i {
-            /* Atur ukuran ikon agar pas di dalam node */
-            width: 50% !important; 
-            height: 50% !important;
-            filter: drop-shadow(0 0 5px rgba(0,0,0,0.8)); /* Tambahkan sedikit bayangan pada ikon */
-        }
-
-        /* Styling untuk bar XP/Level */
-        .xp-bar-bg {
-            background-color: rgba(55, 65, 81, 0.8); /* Sedikit transparan */
-            border: none; /* Hapus border */
-        }
+        /* Gaya untuk XP Bar */
         .xp-bar-fill {
-            background: linear-gradient(90deg, #10b981, #059669);
-            transition: width 0.5s ease-out;
-        }
-        
-        /* Override background untuk main-content saat di halaman map */
-        #main-content.map-background > div {
-            background-color: rgba(17, 24, 39, 0.7) !important; /* Kotak teks map agar terbaca */
-            border: none !important; /* Hapus border */
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5) !important;
+            height: 100%;
+            background: var(--xp-gradient);
+            box-shadow: var(--shadow-glow);
+            transition: width 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        /* Untuk Quest Book dan Education, hilangkan border-l-4 dan border-t-8 */
-        .game-content-panel.border-l-4 { border-left: none !important; }
-        .game-content-panel.border-t-8 { border-top: none !important; }
-        
+        /* Animasi Poin Terbang */
+        @keyframes point-fly {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(50px, -100px) scale(0.5); opacity: 0; }
+        }
+        .point-animation {
+            position: absolute;
+            font-size: 1.5rem;
+            color: var(--color-neon-main);
+            font-weight: bold;
+            text-shadow: 0 0 5px var(--color-neon-main);
+            pointer-events: none;
+            z-index: 50;
+            animation: point-fly 1.5s ease-out forwards;
+        }
+
+        /* Partikel Background Sederhana (Simulasi) */
+        .background-dots {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.1;
+            background-image: radial-gradient(var(--color-neon-main) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: -1;
+        }
     </style>
 </head>
-<body class="">
+<body class="theme-neon-cyber">
+    <!-- Boilerplate Firebase - Required by instruction set, even if using localStorage for game data -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    
+        // Global variables must be used as available
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-<div id="app-container" class="">
+        let db, auth;
 
-        
+        try {
+            if (Object.keys(firebaseConfig).length > 0) {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('Debug');
 
-<header class="flex justify-between items-center p-4">
-            
-
-<div id="header-profile" class="flex items-center space-x-3 p-2 rounded-full shadow-xl">
-                <img id="profile-avatar-sm" src="https://i.supaimg.com/05ce630e-a6e3-448c-89ad-efaab61782e2.jpg" class="rounded-full w-10 h-10 border-2 border-yellow-400 object-cover" alt="Avatar">
-                <div>
-                    <span class="text-sm font-bold text-yellow-300" id="profile-name-header">Aulia Novice</span>
-                    <div class="flex items-center text-xs text-gray-400">
-                        <span>Lv. <span id="profile-level-header">18</span></span>
-                        <div class="xp-bar-bg w-16 h-2 ml-2 rounded-full">
-                            <div id="xp-fill-header" class="xp-bar-fill h-full rounded-full" style="width: 65%;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            
-
-<div class="flex space-x-4">
-                <div class="flex items-center space-x-2 bg-gray-800 p-2 rounded-full text-sm">
-                    <i data-lucide="hourglass" class="w-5 h-5 text-indigo-400 resource-icon"></i>
-                    <span id="resource-crystal">530</span>
-                </div>
-                <div class="flex items-center space-x-2 bg-gray-800 p-2 rounded-full text-sm">
-                    <i data-lucide="gem" class="w-5 h-5 text-yellow-400 resource-icon"></i>
-                    <span id="resource-gold">22,194</span>
-                </div>
-                <button class="text-gray-400 hover:text-white transition duration-200">
-                    <i data-lucide="settings" class="w-6 h-6"></i>
-                </button>
-            </div>
-        </header>
-
-        
-
-<main id="main-content" class="min-h-[70vh]">
-            
-
-</main>
-
-        
-
-<footer class="p-4 flex justify-center space-x-8 md:space-x-16">
-            <button onclick="navigate('map')" id="nav-map" class="nav-icon-container flex flex-col items-center text-xs text-gray-400 hover:text-white transition duration-200 p-2 rounded-lg active-nav-icon">
-                <i data-lucide="map" class="w-8 h-8 md:w-10 md:h-10 text-red-400"></i>
-                <span class="mt-1">Peta Dunia</span>
-            </button>
-            <button onclick="navigate('profile')" id="nav-profile" class="nav-icon-container flex flex-col items-center text-xs text-gray-400 hover:text-white transition duration-200 p-2 rounded-lg">
-                <i data-lucide="user-square" class="w-8 h-8 md:w-10 md:h-10 text-teal-400"></i>
-                <span class="mt-1">Profil</span>
-            </button>
-            <button onclick="navigate('skill')" id="nav-skill" class="nav-icon-container flex flex-col items-center text-xs text-gray-400 hover:text-white transition duration-200 p-2 rounded-lg">
-                <i data-lucide="brain" class="w-8 h-8 md:w-10 md:h-10 text-yellow-400"></i>
-                <span class="mt-1">Keahlian</span>
-            </button>
-            <button onclick="navigate('quest')" id="nav-quest" class="nav-icon-container flex flex-col items-center text-xs text-gray-400 hover:text-white transition duration-200 p-2 rounded-lg">
-                <i data-lucide="book-open-check" class="w-8 h-8 md:w-10 md:h-10 text-indigo-400"></i>
-                <span class="mt-1">Buku Tugas</span>
-            </button>
-            <button onclick="navigate('education')" id="nav-education" class="nav-icon-container flex flex-col items-center text-xs text-gray-400 hover:text-white transition duration-200 p-2 rounded-lg">
-                <i data-lucide="graduation-cap" class="w-8 h-8 md:w-10 md:h-10 text-green-400"></i>
-                <span class="mt-1">Pendidikan</span>
-            </button>
-        </footer>
-    </div>
-
-    
-
-<script>
-        // --- DATA PORTFOLIO ---
-        const portfolioData = {
-            name: "Aulia Novice",
-            title: "Pengembang Full-Stack & Spesialis ML",
-            level: 18,
-            xp: 6500,
-            xpMax: 10000,
-            resources: {
-                crystal: 530, // Waktu Proyek/Pengalaman
-                gold: 22194   // Nilai Portfolio/Klien
-            },
-            personality: [ // Mock data untuk radar chart (jika diimplementasikan) atau bar chart
-                { trait: "Ketelitian (Conscientiousness)", value: 95 },
-                { trait: "Ekstraversi (Extroversion)", value: 75 },
-                { trait: "Keterbukaan pada Pengalaman (Openness)", value: 88 },
-                { trait: "Keteramahan (Agreeableness)", value: 70 },
-                { trait: "Neurotisisme (Neuroticism)", value: 55 },
-            ],
-            skills: {
-                // DIKEMBALIKAN KE IKON LUCIDE DAN WARNA
-                center: { name: "Otak Logika (Core)", icon: "brain", color: "text-purple-400", bg: "bg-purple-900" },
-                nodes: [
-                    { id: 'n1', name: "DevOps", icon: "cloud", level: 80, color: "text-blue-400", bg: "bg-blue-900", details: ["AWS", "Docker", "Kubernetes", "CI/CD"] },
-                    { id: 'n2', name: "Frontend", icon: "layout-grid", level: 90, color: "text-green-400", bg: "bg-green-900", details: ["React", "Vue.js", "Tailwind CSS", "Aestetics"] },
-                    { id: 'n3', name: "Backend", icon: "server", level: 85, color: "text-red-400", bg: "bg-red-900", details: ["Python (Django/Flask)", "Node.js (Express)", "Golang", "Microservices"] },
-                    { id: 'n4', name: "Data/ML", icon: "database", level: 75, color: "text-yellow-400", bg: "bg-yellow-900", details: ["Python (Pandas, Scikit)", "SQL/NoSQL", "Data Modeling", "TensorFlow (Dasar)"] }
-                ]
-            },
-            quests: [ // Proyek
-                { title: "Ponegraph Music", desc: "Membangun Semantic Web untuk musik dengan mengintegrasikan dataset artis dan lagu ke dalam triple RDF yang disimpan di GraphDB, dan menghubungkannya dengan layanan DBpedia jarak jauh.", type: "Machine Learning", progress: 100, status: "Selesai" },
-                { title: "Hafiz Helper", desc: "Mengembangkan aplikasi mobil tilawah Al-Qur'an menggunakan React Native dan Django. Diuji dengan Jest, diintegrasikan dengan SonarCloud, dan layanan pemantauan dengan Prometheus dan Grafana.", type: "Software Development", progress: 100, status: "Selesai" },
-                { title: "Gacha-aaS", desc: "Mengembangkan Gacha-aaS dengan microservice Golang menggunakan pola CQRS dan React, menyediakan API untuk mengelola karakter dan melakukan gacha.", type: "Software Development", progress: 100, status: "Selesai" },
-                { title: "LaundryEase", desc: "Mengembangkan aplikasi layanan laundry menggunakan Nest.js dan Next.js, dengan PostgreSQL dan Prisma untuk manajemen database.", type: "Software Development", progress: 100, status: "Selesai" },
-            ],
-            education: [
-                { title: "S2 Ilmu Komputer", institution: "Universitas Indonesia", period: "2020-2022", icon: "university", color: "purple", detail: "Fokus pada Sistem Terdistribusi dan Kecerdasan Buatan." },
-                { title: "Machine Learning Cohort", institution: "Bangkit Academy", period: "2023", icon: "award", color: "green", detail: "Lulus dengan predikat terbaik, fokus pada implementasi model ML." },
-            ]
-        };
-
-        // --- GLOBAL STATE DAN UTILS ---
-        let currentPage = 'map';
-        const contentDiv = document.getElementById('main-content');
-        const navButtons = document.querySelectorAll('.nav-icon-container');
-
-        // Fungsi untuk mengkonversi nilai (0-100) ke lebar Tailwind CSS
-        const toTailwindWidth = (value) => `w-[${value}%]`;
-        
-        // Fungsi untuk rendering ikon Lucide
-        function renderIcons() {
-            lucide.createIcons();
-        }
-
-        // Fungsi untuk memperbarui Header UI (Level/Resources)
-        function updateHeader() {
-            document.getElementById('profile-name-header').textContent = portfolioData.name;
-            document.getElementById('profile-level-header').textContent = portfolioData.level;
-            document.getElementById('xp-fill-header').style.width = `${(portfolioData.xp / portfolioData.xpMax) * 100}%`;
-            document.getElementById('resource-crystal').textContent = portfolioData.resources.crystal.toLocaleString('id-ID');
-            document.getElementById('resource-gold').textContent = portfolioData.resources.gold.toLocaleString('id-ID');
-        }
-
-        // --- RENDERING HALAMAN ---
-
-        // 1. PETA DUNIA (Menu Utama)
-        function renderMap() {
-            contentDiv.className = 'flex-grow overflow-y-auto relative flex flex-col items-center justify-center p-6 md:p-8'; // Reset class
-            contentDiv.classList.add('map-background'); 
-
-            // Kotak teks map sekarang juga menggunakan game-content-panel
-            contentDiv.innerHTML = `
-                <div class="relative z-10 text-center game-content-panel p-8 rounded-xl shadow-2xl">
-                    <h1 class="text-4xl md:text-6xl font-extrabold text-white tracking-widest text-shadow-lg" style="text-shadow: 0 0 10px #fcd34d;">SELAMAT DATANG, PAHLAWAN!</h1>
-                    <p class="mt-4 text-xl text-yellow-300">Jelajahi keahlian dan pencapaian ${portfolioData.name}.</p>
-                    <div class="mt-8 flex justify-center space-x-6">
-                        <button onclick="navigate('quest')" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xl font-bold text-white transition duration-300">
-                            Mulai Misi (Proyek)
-                        </button>
-                        <button onclick="navigate('skill')" class="px-6 py-3 bg-teal-600 hover:bg-teal-700 rounded-lg shadow-xl font-bold text-white transition duration-300">
-                            Lihat Pohon Keahlian
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // 2. PROFIL
-        function renderProfile() {
-            contentDiv.className = 'flex-grow overflow-y-auto relative p-6 md:p-8';
-            contentDiv.classList.remove('map-background'); 
-            const personalityHtml = portfolioData.personality.map(p => `
-                <div class="mb-4">
-                    <div class="flex justify-between text-sm">
-                        <span>${p.trait}</span>
-                        <span class="font-bold text-yellow-300">${p.value}%</span>
-                    </div>
-                    <div class="xp-bar-bg h-3 rounded-full mt-1">
-                        <div class="h-full rounded-full" style="width: ${p.value}%; background-color: ${p.value > 80 ? '#10b981' : p.value > 60 ? '#f59e0b' : '#ef4444'};"></div>
-                    </div>
-                </div>
-            `).join('');
-
-            contentDiv.innerHTML = `
-                <h2 class="text-3xl font-bold mb-6 text-yellow-300 border-b border-indigo-600 pb-2">PROFIL PAHLAWAN</h2>
-                <div class="grid md:grid-cols-2 gap-8">
-                    
-
-<div class="game-content-panel p-6 rounded-xl shadow-2xl">
-                        <div class="flex items-center space-x-4 mb-4">
-                            <img src="https://i.supaimg.com/05ce630e-a6e3-448c-89ad-efaab61782e2.jpg" class="rounded-lg border-4 border-yellow-400 w-24 h-24 object-cover" alt="Avatar Pixel">
-                            <div>
-                                <h3 class="text-2xl font-extrabold text-white">${portfolioData.name}</h3>
-                                <p class="text-sm text-gray-400">${portfolioData.title}</p>
-                            </div>
-                        </div>
-
-                        
-
-<div class="mt-4">
-                            <div class="flex justify-between text-lg font-bold">
-                                <span class="text-yellow-400">Lv. ${portfolioData.level}</span>
-                                <span class="text-sm text-gray-400">${portfolioData.xp} / ${portfolioData.xpMax} XP</span>
-                            </div>
-                            <div class="xp-bar-bg h-4 rounded-full mt-1">
-                                <div class="xp-bar-fill h-full rounded-full" style="width: ${(portfolioData.xp / portfolioData.xpMax) * 100}%;"></div>
-                            </div>
-                        </div>
-                        
-                        <p class="mt-6 text-gray-300 text-sm">
-                            Saya adalah pengembang yang bersemangat dalam membangun solusi yang skalabel dan efisien. Saya menguasai jalur Backend, Frontend, dan memiliki pemahaman mendalam tentang pola Microservices.
-                        </p>
-                    </div>
-
-                    
-
-<div class="game-content-panel p-6 rounded-xl shadow-2xl">
-                        <h3 class="text-xl font-bold mb-4 text-indigo-400 border-b border-gray-700 pb-2">STATISTIK KEPRIBADIAN</h3>
-                        ${personalityHtml}
-                    </div>
-                </div>
-                
-                
-
-<div class="game-content-panel p-6 rounded-xl shadow-2xl mt-8">
-                    <h3 class="text-xl font-bold mb-4 text-red-400 border-b border-gray-700 pb-2">INVENTARIS & KONTAK</h3>
-                    <div class="flex flex-wrap gap-4">
-                        <a href="#" class="flex items-center space-x-2 text-white hover:text-red-400 transition" target="_blank">
-                            <i data-lucide="mail" class="w-5 h-5"></i>
-                            <span>Email [Sistem Komunikasi]</span>
-                        </a>
-                        <a href="#" class="flex items-center space-x-2 text-white hover:text-red-400 transition" target="_blank">
-                            <i data-lucide="linkedin" class="w-5 h-5"></i>
-                            <span>LinkedIn [Peringkat Klan]</span>
-                        </a>
-                        <a href="#" class="flex items-center space-x-2 text-white hover:text-red-400 transition" target="_blank">
-                            <i data-lucide="github" class="w-5 h-5"></i>
-                            <span>GitHub [Gudang Artefak]</span>
-                        </a>
-                    </div>
-                </div>
-            `;
-            renderIcons();
-        }
-
-        // 3. POHON KEAHLIAN
-        function renderSkillTree() {
-            contentDiv.className = 'flex-grow overflow-y-auto relative flex flex-col items-center justify-center p-6 md:p-8';
-            contentDiv.classList.remove('map-background'); 
-            
-            // Simulasikan Skill Tree dengan posisi absolut untuk node
-            const centerNode = portfolioData.skills.center;
-            const nodes = portfolioData.skills.nodes;
-            
-            // Posisi relatif untuk node. Disesuaikan untuk memberi jarak lebih jauh dari node pusat 
-            // agar tidak 'nempel', terutama di layar kecil.
-            const nodePositions = [
-                { top: '10%', left: '10%' }, 
-                { top: '10%', right: '10%' },
-                { bottom: '10%', right: '10%' },
-                { bottom: '10%', left: '10%' }
-            ];
-
-            // Membangun HTML untuk node tengah (CORE)
-            let nodesHtml = `
-                <div id="skill-center" class="skill-node relative w-28 h-28 rounded-full flex flex-col items-center justify-center ${centerNode.bg} shadow-xl z-10" 
-                     style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                    <i data-lucide="${centerNode.icon}" class="w-16 h-16 ${centerNode.color}"></i>
-                    <!-- Teks di bawah ikon -->
-                    <span class="absolute bottom-0 text-xs font-bold text-white text-center w-full bg-black/60 py-1">${centerNode.name}</span>
-                </div>`;
-
-            // Node Samping
-            nodes.forEach((node, index) => {
-                const pos = nodePositions[index % nodePositions.length];
-                const nodeStyle = `position: absolute; ${pos.top ? `top: ${pos.top};` : ''} ${pos.bottom ? `bottom: ${pos.bottom};` : ''} ${pos.left ? `left: ${pos.left};` : ''} ${pos.right ? `right: ${pos.right};` : ''}`;
-
-                nodesHtml += `
-                    <div id="skill-${node.id}" class="skill-node relative w-24 h-24 rounded-full flex flex-col items-center justify-center ${node.bg} shadow-xl z-10" 
-                         style="${nodeStyle}" 
-                         onclick="showSkillDetails('${node.id}')">
-                        <i data-lucide="${node.icon}" class="w-12 h-12 ${node.color}"></i>
-                        <!-- Teks di bawah ikon -->
-                        <span class="absolute bottom-0 text-xs mt-1 font-bold text-white text-center w-full bg-black/60 py-1">${node.name}</span>
-                    </div>
-                `;
-            });
-            
-            // Container untuk Skill Tree
-            contentDiv.innerHTML = `
-                <h2 class="text-3xl font-bold mb-6 text-yellow-300 border-b border-indigo-600 pb-2 w-full text-center">POHON KEAHLIAN (SKILL TREE)</h2>
-                <div class="relative w-full h-[600px] game-content-panel p-4 flex items-center justify-center overflow-hidden">
-                    <!-- Garis penghubung bisa ditambahkan di sini jika diinginkan -->
-                    ${nodesHtml}
-                </div>
-                
-                <!-- Margin atas diubah dari mt-6 menjadi mt-8 untuk memberikan jarak tambahan -->
-<div id="skill-details-panel" class="game-content-panel mt-8 p-4 w-full md:w-1/2 rounded-xl hidden">
-                    <h3 class="text-xl font-bold text-yellow-300 mb-2" id="skill-detail-title">Pilih Node Keahlian</h3>
-                    <p class="text-sm text-gray-400" id="skill-detail-level">Level: -</p>
-                    <ul class="list-disc list-inside mt-2 text-gray-300" id="skill-detail-list">
-                        <li>Klik node untuk melihat detail.</li>
-                    </ul>
-                </div>
-            `;
-            
-            // Render ulang ikon
-            renderIcons();
-        }
-
-        // Fungsi untuk menampilkan detail skill
-        window.showSkillDetails = function(skillId) {
-            const node = portfolioData.skills.nodes.find(n => n.id === skillId);
-            const panel = document.getElementById('skill-details-panel');
-            const list = document.getElementById('skill-detail-list');
-
-            if (node) {
-                document.getElementById('skill-detail-title').textContent = node.name + " (" + node.level + "%)";
-                document.getElementById('skill-detail-level').textContent = `Tingkat Penguasaan: ${node.level}%`;
-                list.innerHTML = node.details.map(d => `<li>${d}</li>`).join('');
-                panel.classList.remove('hidden');
+                if (initialAuthToken) {
+                    signInWithCustomToken(auth, initialAuthToken)
+                        .then(() => console.log("Firebase signed in with custom token."))
+                        .catch((error) => console.error("Firebase sign-in error:", error));
+                } else {
+                    signInAnonymously(auth)
+                        .then(() => console.log("Firebase signed in anonymously."))
+                        .catch((error) => console.error("Firebase sign-in error:", error));
+                }
+            } else {
+                console.warn("Firebase config not available. Proceeding without Firebase.");
             }
-        }
-
-
-        // 4. BUKU TUGAS (Proyek)
-        function renderQuestBook() {
-            contentDiv.className = 'flex-grow overflow-y-auto relative p-6 md:p-8'; // Reset class
-            contentDiv.classList.remove('map-background'); // Hapus class map-background
-            const questsHtml = portfolioData.quests.map(quest => `
-                <div class="game-content-panel p-4 mb-4 rounded-lg flex justify-between items-center transition duration-300 hover:bg-gray-800">
-                    <div class="flex-grow">
-                        <h3 class="text-lg font-bold text-white">${quest.title}</h3>
-                        <p class="text-xs font-semibold text-yellow-400 mt-1">${quest.type}</p>
-                        <p class="text-sm text-gray-400 mt-2">${quest.desc}</p>
-                        <div class="w-full bg-gray-700 h-2 rounded-full mt-2">
-                            <div class="h-full rounded-full bg-green-500" style="width: ${quest.progress}%;"></div>
-                        </div>
-                    </div>
-                    <div class="ml-4 text-right">
-                        <span class="text-sm font-bold text-green-400">${quest.status}</span>
-                        <button class="ml-4 px-3 py-1 bg-green-600/70 text-white text-xs rounded-full hover:bg-green-600 transition">
-                            Lihat Detail
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-
-            contentDiv.innerHTML = `
-                <h2 class="text-3xl font-bold mb-6 text-yellow-300 border-b border-indigo-600 pb-2">BUKU TUGAS (PROYEK)</h2>
-                <div id="quest-list">
-                    ${questsHtml}
-                </div>
-            `;
-        }
-
-        // 5. PENDIDIKAN
-        function renderEducation() {
-            contentDiv.className = 'flex-grow overflow-y-auto relative p-6 md:p-8'; // Reset class
-            contentDiv.classList.remove('map-background'); // Hapus class map-background
-            const educationHtml = portfolioData.education.map(edu => `
-                <div class="game-content-panel p-6 rounded-xl shadow-xl flex flex-col items-center text-center">
-                    <i data-lucide="${edu.icon}" class="w-16 h-16 text-${edu.color}-400 mb-3"></i>
-                    <h3 class="text-xl font-bold text-white">${edu.title}</h3>
-                    <p class="text-sm text-yellow-400">${edu.institution}</p>
-                    <p class="text-xs text-gray-500 mt-1">${edu.period}</p>
-                    <p class="text-sm text-gray-300 mt-4">${edu.detail}</p>
-                </div>
-            `).join('');
-
-            contentDiv.innerHTML = `
-                <h2 class="text-3xl font-bold mb-6 text-yellow-300 border-b border-indigo-600 pb-2">AKADEMI & PELATIHAN</h2>
-                <div class="grid md:grid-cols-2 gap-6">
-                    ${educationHtml}
-                </div>
-            `;
-            renderIcons();
-        }
-
-        // --- FUNGSI NAVIGASI UTAMA ---
-        const pageRenderers = {
-            'map': renderMap,
-            'profile': renderProfile,
-            'skill': renderSkillTree,
-            'quest': renderQuestBook,
-            'education': renderEducation
-        };
-
-        function navigate(page) {
-            navButtons.forEach(btn => btn.classList.remove('active-nav-icon'));
-            document.getElementById(`nav-${page}`).classList.add('active-nav-icon');
-            currentPage = page;
-            if (pageRenderers[page]) {
-                pageRenderers[page]();
-            }
-        }
-
-        // --- INISIALISASI ---
-        window.onload = function() {
-            updateHeader();
-            renderIcons();
-            navigate(currentPage);
+        } catch (error) {
+            console.error("Failed to initialize Firebase:", error);
         }
     </script>
+    <!-- End Firebase Boilerplate -->
 
+    <!-- Partikel Background (Simulasi Sederhana) -->
+    <div class="background-dots"></div>
+
+    <!-- Header & Navigasi -->
+    <header class="sticky top-0 z-40 bg-bg-dark/90 backdrop-blur-sm border-b border-neon-main/50 shadow-lg" style="box-shadow: 0 2px 10px var(--color-neon-main, #00FFF0) / 50%;">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-display uppercase tracking-widest text-neon-main" style="text-shadow: 0 0 5px var(--color-neon-main);">PointVerse</h1>
+
+            <!-- Navigasi Utama -->
+            <nav class="hidden md:flex space-x-4">
+                <button onclick="displayPage('dashboard')" class="text-sm font-semibold hover:text-neon-accent transition duration-200">DASHBOARD</button>
+                <button onclick="displayPage('profile')" class="text-sm font-semibold hover:text-neon-accent transition duration-200">PROFIL</button>
+                <button onclick="displayPage('leaderboard')" class="text-sm font-semibold hover:text-neon-accent transition duration-200">LEADERBOARD</button>
+                <button onclick="displayPage('shop')" class="text-sm font-semibold hover:text-neon-accent transition duration-200">SHOP</button>
+            </nav>
+
+            <!-- Theme Selector & Profile Icon (Desktop) -->
+            <div class="flex items-center space-x-4">
+                 <!-- Theme Selector -->
+                <div class="relative group">
+                    <button class="text-white text-sm p-2 rounded-full border border-neon-main/50 hover:bg-neon-main/20 transition duration-200" title="Pilih Tema">
+                        <i data-lucide="palette" class="w-5 h-5" style="color: var(--color-neon-main);"></i>
+                    </button>
+                    <div id="theme-selector" class="absolute right-0 top-full mt-2 w-40 p-2 bg-bg-dark border border-neon-main/50 rounded-lg shadow-xl hidden group-hover:block transition-all duration-300">
+                        <button onclick="setTheme('neon-cyber')" class="w-full text-left p-2 rounded-md mb-1 hover:bg-gray-800 flex items-center transition duration-150">
+                            <span class="w-3 h-3 rounded-full bg-cyan-400 mr-2 shadow-[0_0_5px_#00FFF0]"></span> Neon Cyber
+                        </button>
+                        <button onclick="setTheme('tech-minimalist')" class="w-full text-left p-2 rounded-md mb-1 hover:bg-gray-800 flex items-center transition duration-150">
+                            <span class="w-3 h-3 rounded-full bg-emerald-400 mr-2 shadow-[0_0_5px_#6EE7B7]"></span> Tech Minimalist
+                        </button>
+                        <button onclick="setTheme('galaxy-purple')" class="w-full text-left p-2 rounded-md hover:bg-gray-800 flex items-center transition duration-150">
+                            <span class="w-3 h-3 rounded-full bg-purple-400 mr-2 shadow-[0_0_5px_#C084FC]"></span> Galaxy Purple
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="displayPage('profile')" class="hidden md:block w-8 h-8 rounded-full border border-neon-main/50 hover:opacity-80 transition duration-200">
+                    <img id="header-avatar" src="" alt="Avatar" class="w-full h-full object-cover rounded-full">
+                </button>
+            </div>
+        </div>
+
+         <!-- Mobile Navigasi -->
+        <nav class="md:hidden flex justify-around p-3 border-t border-neon-main/50">
+            <button onclick="displayPage('dashboard')" class="text-xs font-semibold hover:text-neon-accent transition duration-200 flex flex-col items-center">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+            </button>
+            <button onclick="displayPage('profile')" class="text-xs font-semibold hover:text-neon-accent transition duration-200 flex flex-col items-center">
+                <i data-lucide="user" class="w-5 h-5"></i> Profil
+            </button>
+            <button onclick="displayPage('leaderboard')" class="text-xs font-semibold hover:text-neon-accent transition duration-200 flex flex-col items-center">
+                <i data-lucide="trophy" class="w-5 h-5"></i> Rank
+            </button>
+            <button onclick="displayPage('shop')" class="text-xs font-semibold hover:text-neon-accent transition duration-200 flex flex-col items-center">
+                <i data-lucide="store" class="w-5 h-5"></i> Shop
+            </button>
+        </nav>
+    </header>
+
+    <!-- Konten Utama (Page Container) -->
+    <main id="app-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <!-- Konten akan di-inject di sini oleh JavaScript -->
+    </main>
+
+    <!-- Modal for messages (Simulasi alert/confirm) -->
+    <div id="message-modal" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center hidden" onclick="this.classList.add('hidden')">
+        <div class="cyber-card p-6 rounded-xl w-80 max-w-full text-center" onclick="event.stopPropagation();">
+            <h3 id="modal-title" class="text-xl font-display mb-3 text-neon-main" style="text-shadow: 0 0 3px var(--color-neon-main);"></h3>
+            <p id="modal-content" class="text-sm mb-5"></p>
+            <button onclick="document.getElementById('message-modal').classList.add('hidden')" class="neon-button px-4 py-2 rounded text-sm uppercase">Close</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- LOGIKA FIREBASE (Boilerplate) ---
+        // Variabel global db dan auth diinisialisasi di script type="module" di atas.
+        // Di sini kita hanya menginisialisasi fungsi game state dan data lokal.
+
+        // --- DATA GAME & STATE LOKAL (localStorage) ---
+        const USER_DATA_KEY = 'pointverse_user_data';
+        const initialUserData = {
+            username: "NeonSeeker",
+            points: 1250,
+            level: 7,
+            exp: 450,
+            expToNextLevel: 1000,
+            rank: "Silver",
+            avatar: "https://placehold.co/100x100/101010/00FFF0?text=NS",
+            missions: [
+                { id: 1, title: "Buat 1 Postingan", reward: 50, completed: false },
+                { id: 2, title: "Komentar di 3 Topik", reward: 75, completed: false },
+                { id: 3, title: "Invite 1 Teman", reward: 150, completed: false }
+            ],
+            theme: "neon-cyber"
+        };
+        let userData = {};
+
+        function loadUserData() {
+            const storedData = localStorage.getItem(USER_DATA_KEY);
+            if (storedData) {
+                try {
+                    userData = JSON.parse(storedData);
+                    // Pastikan misi ada, jika tidak, pakai misi default
+                    if (!userData.missions) userData.missions = initialUserData.missions;
+                } catch (e) {
+                    console.error("Error parsing user data, loading initial data.", e);
+                    userData = initialUserData;
+                }
+            } else {
+                userData = initialUserData;
+            }
+            saveUserData(); // Simpan jika menggunakan default
+            setTheme(userData.theme || 'neon-cyber');
+        }
+
+        function saveUserData() {
+            localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+        }
+
+        function getRank(level) {
+            if (level >= 30) return "Legend";
+            if (level >= 20) return "Diamond";
+            if (level >= 15) return "Platinum";
+            if (level >= 10) return "Gold";
+            if (level >= 5) return "Silver";
+            return "Bronze";
+        }
+
+        function updateLevelAndRank(xpGained) {
+            userData.exp += xpGained;
+
+            // Loop untuk cek kenaikan level
+            while (userData.exp >= userData.expToNextLevel) {
+                userData.exp -= userData.expToNextLevel;
+                userData.level += 1;
+                // Formula sederhana untuk EXP bar berikutnya
+                userData.expToNextLevel = 1000 + (userData.level * 100);
+                userData.rank = getRank(userData.level);
+                showModal("Level Up!", `Selamat! Anda naik ke Level ${userData.level} (${userData.rank}).`);
+            }
+
+            userData.rank = getRank(userData.level);
+            saveUserData();
+        }
+
+        // --- LOGIKA INTERAKSI ---
+
+        function claimMission(missionId, buttonEl) {
+            const mission = userData.missions.find(m => m.id === missionId);
+            if (!mission || mission.completed) {
+                showModal("Gagal Klaim", "Misi ini sudah diklaim atau tidak valid.");
+                return;
+            }
+
+            // Tambahkan poin dan XP
+            const reward = mission.reward;
+            const xpGained = reward * 2; // XP 2x dari Poin
+
+            userData.points += reward;
+            mission.completed = true;
+
+            updateLevelAndRank(xpGained);
+
+            // Animasi Poin
+            animatePoints(buttonEl, `+${reward} Poin`, `+${xpGained} XP`);
+
+            // Update UI
+            updateDashboardUI();
+            updateProfileUI(); // Update UI profil jika di halaman profil
+            displayPage('dashboard'); // Kembali ke dashboard untuk melihat update
+
+            showModal("Reward Diklaim!", `Anda mendapatkan ${reward} Poin dan ${xpGained} XP.`);
+        }
+
+        function animatePoints(sourceEl, pointText, xpText) {
+            const rect = sourceEl.getBoundingClientRect();
+            const container = document.getElementById('app-container');
+
+            const createAnimationElement = (text, offset) => {
+                const animEl = document.createElement('div');
+                animEl.className = 'point-animation';
+                animEl.textContent = text;
+                animEl.style.left = `${rect.left + rect.width / 2}px`;
+                animEl.style.top = `${rect.top}px`;
+                animEl.style.color = offset === 0 ? 'var(--color-neon-main)' : 'var(--color-neon-accent)';
+                animEl.style.textShadow = `0 0 5px ${offset === 0 ? 'var(--color-neon-main)' : 'var(--color-neon-accent)'}`;
+                animEl.style.animationName = 'point-fly';
+                animEl.style.animationDelay = `${offset}s`;
+
+                document.body.appendChild(animEl);
+
+                animEl.addEventListener('animationend', () => {
+                    animEl.remove();
+                });
+            };
+
+            createAnimationElement(pointText, 0); // Poin
+            createAnimationElement(xpText, 0.2); // XP
+        }
+
+        // --- LOGIKA UI/RENDER ---
+
+        function updateHeaderProfile() {
+            document.getElementById('header-avatar').src = userData.avatar;
+        }
+
+        function updateProfileSummary() {
+            const expPercent = Math.min(100, (userData.exp / userData.expToNextLevel) * 100);
+
+            document.getElementById('profile-username').textContent = userData.username;
+            document.getElementById('profile-level').textContent = userData.level;
+            document.getElementById('profile-rank').textContent = userData.rank;
+            document.getElementById('profile-points').textContent = userData.points.toLocaleString();
+            document.getElementById('xp-bar-fill').style.width = `${expPercent}%`;
+            document.getElementById('xp-text').textContent = `XP: ${userData.exp} / ${userData.expToNextLevel}`;
+            document.getElementById('profile-avatar-img').src = userData.avatar;
+
+            // Update Rank Badge Color/Glow
+            const rankBadge = document.getElementById('profile-rank-badge');
+            rankBadge.className = rankBadge.className.replace(/\btext-(?:cyan|magenta|yellow|white|indigo|red)-\d+\b/g, ''); // Hapus warna lama
+            rankBadge.className = rankBadge.className.replace(/\bshadow-[\w\-\[\]]+$/g, ''); // Hapus shadow lama
+
+            let rankClass = '';
+            let shadowClass = '';
+            switch(userData.rank) {
+                case 'Bronze': rankClass = 'text-amber-500'; shadowClass = 'shadow-[0_0_5px_#D97706]'; break;
+                case 'Silver': rankClass = 'text-gray-300'; shadowClass = 'shadow-[0_0_5px_#D1D5DB]'; break;
+                case 'Gold': rankClass = 'text-yellow-400'; shadowClass = 'shadow-[0_0_5px_#FACC15]'; break;
+                case 'Platinum': rankClass = 'text-cyan-400'; shadowClass = 'shadow-[0_0_5px_#22D3EE]'; break;
+                case 'Diamond': rankClass = 'text-magenta-400'; shadowClass = 'shadow-[0_0_5px_#F472B6]'; break;
+                case 'Legend': rankClass = 'text-red-500 bg-gradient-to-r from-red-500 to-yellow-500 text-transparent bg-clip-text'; shadowClass = 'shadow-[0_0_10px_#EF4444]'; break;
+                default: rankClass = 'text-white'; shadowClass = 'shadow-[0_0_5px_white]'; break;
+            }
+
+            // Untuk Legend, text-clip harus ditangani di HTML, kita hanya tambahkan class
+            rankBadge.classList.add(rankClass);
+            if (userData.rank !== 'Legend') { // Text clip tidak bekerja baik dengan shadow, jadi kita pisahkan
+                rankBadge.classList.add(shadowClass);
+            } else {
+                rankBadge.style.textShadow = 'none'; // Nonaktifkan text-shadow default jika Legend
+                rankBadge.style.filter = 'drop-shadow(0 0 5px #EF4444)';
+            }
+        }
+
+        function updateMissionBoard() {
+            const container = document.getElementById('mission-list');
+            if (!container) return;
+
+            container.innerHTML = userData.missions.map(mission => `
+                <div class="flex justify-between items-center p-3 border-b border-neon-main/30 last:border-b-0 hover:bg-gray-800/50 transition duration-200 rounded-md">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-semibold">${mission.title}</span>
+                        <span class="text-xs text-neon-accent/80 flex items-center mt-1">
+                            <i data-lucide="zap" class="w-3 h-3 mr-1" style="color: var(--color-neon-accent);"></i>
+                            Reward: ${mission.reward} Pts / ${mission.reward * 2} XP
+                        </span>
+                    </div>
+                    ${mission.completed
+                        ? `<span class="text-xs uppercase text-neon-main flex items-center" style="text-shadow: 0 0 3px var(--color-neon-main);">
+                            <i data-lucide="check-circle" class="w-4 h-4 mr-1"></i> Klaim
+                           </span>`
+                        : `<button onclick="claimMission(${mission.id}, this)" class="neon-button px-3 py-1 text-xs rounded uppercase">
+                            Klaim Reward
+                           </button>`
+                    }
+                </div>
+            `).join('');
+
+            lucide.createIcons(); // Re-render Lucide icons
+        }
+
+        function updateDashboardUI() {
+            updateHeaderProfile();
+            updateProfileSummary();
+            updateMissionBoard();
+            lucide.createIcons(); // Pastikan ikon di dashboard di-render
+        }
+
+        // --- LOGIKA PERGANTIAN HALAMAN ---
+
+        const pageTemplates = {
+            dashboard: `
+                <div class="mb-8">
+                    <h2 class="text-3xl font-display mb-2 text-neon-main" style="text-shadow: 0 0 5px var(--color-neon-main);">CYBER DASHBOARD</h2>
+                    <p class="text-sm text-gray-400">Jelajahi status gamifikasi dan misi harian Anda.</p>
+                </div>
+
+                <!-- Profile Summary & Stats -->
+                <div class="cyber-card p-6 rounded-xl mb-8 flex flex-col md:flex-row items-center justify-between">
+                    <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                        <div class="w-20 h-20 bg-gray-900 rounded-full border-2 border-neon-main/70 p-1">
+                            <img id="profile-avatar-img" src="" alt="Avatar" class="w-full h-full object-cover rounded-full">
+                        </div>
+                        <div>
+                            <span id="profile-rank-badge" class="text-xs font-bold uppercase tracking-widest block" style="filter: drop-shadow(0 0 2px var(--color-neon-accent));"></span>
+                            <h3 id="profile-username" class="text-2xl font-display text-white"></h3>
+                            <p class="text-sm text-neon-accent flex items-center">
+                                <i data-lucide="star" class="w-4 h-4 mr-1"></i> Level <span id="profile-level"></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="w-full md:w-1/2 space-y-2">
+                        <!-- XP Bar -->
+                        <div class="text-xs text-right text-neon-main font-semibold" id="xp-text">XP: 0 / 1000</div>
+                        <div class="h-4 bg-gray-800 rounded-full overflow-hidden border border-neon-main/50">
+                            <div id="xp-bar-fill" class="xp-bar-fill" style="width: 0%;"></div>
+                        </div>
+
+                        <!-- Points -->
+                        <div class="flex justify-between items-center pt-2 border-t border-neon-accent/30">
+                            <span class="text-sm font-semibold uppercase text-neon-main flex items-center">
+                                <i data-lucide="coin" class="w-4 h-4 mr-1"></i> Poin Anda:
+                            </span>
+                            <span id="profile-points" class="text-xl font-display text-neon-accent" style="text-shadow: 0 0 5px var(--color-neon-accent);">1,250</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid Panels -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    <!-- Panel 1: Mission Board (Col 1 Span 2 on Desktop) -->
+                    <div class="cyber-card p-6 rounded-xl lg:col-span-2">
+                        <h3 class="text-xl font-display mb-4 text-neon-main/90 border-b border-neon-accent/50 pb-2 flex items-center">
+                            <i data-lucide="clipboard-list" class="w-5 h-5 mr-2"></i> Mission Board
+                        </h3>
+                        <div id="mission-list" class="space-y-2">
+                            <!-- Missions will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Panel 2: Leaderboard (Col 3 on Desktop) -->
+                    <div class="cyber-card p-6 rounded-xl">
+                        <h3 class="text-xl font-display mb-4 text-neon-main/90 border-b border-neon-accent/50 pb-2 flex items-center">
+                             <i data-lucide="trophy" class="w-5 h-5 mr-2"></i> Top 5 Leaderboard
+                        </h3>
+                        <ul class="space-y-3 text-sm">
+                            <li class="flex justify-between items-center text-yellow-400"><span class="font-bold">1. CyberGod</span> <span>10,450 Pts</span></li>
+                            <li class="flex justify-between items-center text-gray-300"><span class="font-bold">2. NeoRider</span> <span>9,120 Pts</span></li>
+                            <li class="flex justify-between items-center text-yellow-600"><span class="font-bold">3. GridRunner</span> <span>8,800 Pts</span></li>
+                            <li class="flex justify-between items-center"><span class="font-bold">4. EchoPulse</span> <span>7,110 Pts</span></li>
+                            <li class="flex justify-between items-center"><span class="font-bold">5. DataGhost</span> <span>6,500 Pts</span></li>
+                        </ul>
+                        <button onclick="displayPage('leaderboard')" class="neon-button w-full mt-4 py-2 text-sm rounded">Lihat Penuh</button>
+                    </div>
+
+                    <!-- Panel 3: Community Feed (Row 2 Col 1 Span 2 on Desktop) -->
+                    <div class="cyber-card p-6 rounded-xl lg:col-span-2">
+                        <h3 class="text-xl font-display mb-4 text-neon-main/90 border-b border-neon-accent/50 pb-2 flex items-center">
+                            <i data-lucide="message-square" class="w-5 h-5 mr-2"></i> Community Feed (Simulasi)
+                        </h3>
+                        <!-- Input Postingan -->
+                        <div class="mb-4">
+                            <textarea placeholder="Apa yang Anda rasakan di Net hari ini? (Max 140 char)" rows="2" class="w-full bg-gray-900/50 border border-neon-accent/30 p-3 rounded-md text-sm focus:ring-1 focus:ring-neon-accent focus:border-neon-accent/80"></textarea>
+                            <button class="neon-button px-4 py-2 mt-2 float-right text-xs rounded uppercase">Post Status</button>
+                        </div>
+                        <div class="clear-both space-y-4 pt-4 border-t border-gray-700/50">
+                            <!-- Contoh Postingan -->
+                            <div class="border-l-2 border-neon-main/50 pl-3">
+                                <p class="text-sm">Jaringan hari ini terasa cepat. Baru saja mengklaim 3 misi harian!</p>
+                                <span class="text-xs text-gray-500 block mt-1">- NeoSeeker (Level 7) | 5m yang lalu</span>
+                            </div>
+                            <div class="border-l-2 border-neon-accent/50 pl-3">
+                                <p class="text-sm">Perlu 100 XP lagi untuk naik level. Ada yang punya tips farming terbaik?</p>
+                                <span class="text-xs text-gray-500 block mt-1">- GridHunter (Level 12) | 1j yang lalu</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 4: Shop Promo -->
+                    <div class="cyber-card p-6 rounded-xl flex flex-col items-center justify-center text-center">
+                        <h3 class="text-xl font-display mb-4 text-neon-main/90">
+                            SHOP BOOSTER
+                        </h3>
+                        <p class="text-sm text-gray-400 mb-4">Dapatkan Profile Frame baru dan XP Booster!</p>
+                        <button onclick="displayPage('shop')" class="neon-button px-6 py-3 text-lg rounded uppercase">
+                            <i data-lucide="zap" class="w-5 h-5 inline-block mr-2"></i> Kunjungi Shop
+                        </button>
+                    </div>
+
+                </div>
+            `,
+            profile: `
+                <div class="mb-8">
+                    <h2 class="text-3xl font-display mb-2 text-neon-main" style="text-shadow: 0 0 5px var(--color-neon-main);">CYBER PROFILE</h2>
+                    <p class="text-sm text-gray-400">Rincian identitas digital Anda di PointVerse.</p>
+                </div>
+
+                <div class="cyber-card p-8 rounded-xl max-w-2xl mx-auto">
+                    <!-- Profile Header -->
+                    <div class="flex flex-col items-center text-center mb-6 border-b border-neon-accent/30 pb-6">
+                        <div class="w-32 h-32 bg-gray-900 rounded-full border-4 border-neon-main/70 p-1 mb-4" style="box-shadow: 0 0 10px var(--color-neon-main);">
+                            <img id="profile-avatar-img-page" src="" alt="Avatar" class="w-full h-full object-cover rounded-full">
+                        </div>
+                        <h3 id="profile-username-page" class="text-4xl font-display text-white mb-1"></h3>
+                        <span id="profile-rank-badge-page" class="text-lg font-bold uppercase tracking-widest block" style="filter: drop-shadow(0 0 3px var(--color-neon-accent));"></span>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div class="p-4 cyber-card rounded-lg">
+                            <p class="text-xs uppercase text-gray-400">Level</p>
+                            <p id="profile-level-page" class="text-3xl font-display text-neon-main mt-1" style="text-shadow: 0 0 5px var(--color-neon-main);"></p>
+                        </div>
+                        <div class="p-4 cyber-card rounded-lg">
+                            <p class="text-xs uppercase text-gray-400">Total Poin</p>
+                            <p id="profile-points-page" class="text-3xl font-display text-neon-accent mt-1" style="text-shadow: 0 0 5px var(--color-neon-accent);"></p>
+                        </div>
+                    </div>
+
+                    <!-- XP Bar (Detailed) -->
+                    <div class="mt-6">
+                        <p class="text-sm font-semibold mb-2 flex justify-between items-center text-neon-main/80">
+                            Progress Level Berikutnya (Level <span id="next-level-page"></span>)
+                            <span id="xp-text-page" class="text-xs">XP: 0 / 1000</span>
+                        </p>
+                        <div class="h-5 bg-gray-800 rounded-full overflow-hidden border border-neon-main/50">
+                            <div id="xp-bar-fill-page" class="xp-bar-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity (Simulasi) -->
+                    <div class="mt-8 border-t border-neon-main/30 pt-6">
+                        <h4 class="text-xl font-display mb-3 text-neon-main/90">Aktivitas Terbaru</h4>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            <li class="border-l-2 border-neon-accent/50 pl-2">Klaim misi: "Buat 1 Postingan" (+50 Pts)</li>
+                            <li class="border-l-2 border-neon-accent/50 pl-2">Komentar di topik "Crypto-Flow"</li>
+                            <li class="border-l-2 border-neon-accent/50 pl-2">Membeli item "XP Booster I" dari Shop (-500 Pts)</li>
+                        </ul>
+                    </div>
+                </div>
+            `,
+            leaderboard: `
+                <div class="mb-8">
+                    <h2 class="text-3xl font-display mb-2 text-neon-main" style="text-shadow: 0 0 5px var(--color-neon-main);">GLOBAL LEADERBOARD</h2>
+                    <p class="text-sm text-gray-400">Peringkat teratas di seluruh PointVerse.</p>
+                </div>
+
+                <div class="cyber-card p-6 rounded-xl max-w-4xl mx-auto">
+                    <div class="hidden md:grid grid-cols-5 font-bold uppercase text-xs text-neon-accent/80 border-b border-neon-main/50 pb-2 mb-3">
+                        <span class="col-span-1">Peringkat</span>
+                        <span class="col-span-2">Username</span>
+                        <span class="col-span-1 text-center">Level</span>
+                        <span class="col-span-1 text-right">Poin</span>
+                    </div>
+
+                    <div id="leaderboard-list" class="space-y-3">
+                        <!-- Simulated Leaderboard Data -->
+                        ${[
+                            { rank: 1, name: "CyberGod", level: 35, points: "10,450", rankClass: "text-red-500", badge: "Legend" },
+                            { rank: 2, name: "NeoRider", level: 28, points: "9,120", rankClass: "text-indigo-400", badge: "Diamond" },
+                            { rank: 3, name: "GridRunner", level: 21, points: "8,800", rankClass: "text-cyan-400", badge: "Platinum" },
+                            { rank: 4, name: "EchoPulse", level: 16, points: "7,110", rankClass: "text-yellow-400", badge: "Gold" },
+                            { rank: 5, name: "DataGhost", level: 14, points: "6,500", rankClass: "text-gray-300", badge: "Silver" },
+                            { rank: 6, name: "NeonSeeker (Anda)", level: userData.level, points: userData.points.toLocaleString(), rankClass: "text-neon-main", badge: userData.rank },
+                            { rank: 7, name: "ByteMaster", level: 9, points: "4,200", rankClass: "text-gray-500", badge: "Bronze" },
+                            { rank: 8, name: "PulseWire", level: 5, points: "3,800", rankClass: "text-gray-500", badge: "Bronze" },
+                        ].map(user => `
+                            <div class="grid grid-cols-5 items-center p-3 rounded-md transition duration-200 ${user.name.includes("Anda") ? 'bg-neon-main/20 border border-neon-main' : 'hover:bg-gray-800/50'}">
+                                <span class="col-span-1 font-display text-lg ${user.rankClass}">${user.rank}.</span>
+                                <div class="col-span-2 flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-full border border-gray-600 bg-gray-900 flex-shrink-0">
+                                        <img src="https://placehold.co/32x32/${user.name.includes("Anda") ? '0A0A0A/00FFF0' : '0A0A0A/FF00FF'}?text=${user.name.substring(0,2).toUpperCase()}" alt="Avatar" class="w-full h-full object-cover rounded-full">
+                                    </div>
+                                    <span class="truncate text-sm font-semibold">${user.name}</span>
+                                    <span class="text-xs uppercase px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 hidden md:block">${user.badge}</span>
+                                </div>
+                                <span class="col-span-1 text-center font-semibold text-sm">${user.level}</span>
+                                <span class="col-span-1 text-right font-display text-neon-accent text-lg">${user.points}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `,
+            shop: `
+                <div class="mb-8">
+                    <h2 class="text-3xl font-display mb-2 text-neon-main" style="text-shadow: 0 0 5px var(--color-neon-main);">CYBER SHOP</h2>
+                    <p class="text-sm text-gray-400">Tukarkan Poin Anda dengan item virtual eksklusif.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Item 1: Profile Frame - Neon Pulse -->
+                    <div class="cyber-card p-6 rounded-xl flex flex-col items-center text-center">
+                        <div class="w-24 h-24 bg-gray-900 rounded-full border-4 border-neon-accent/80 p-1 mb-4" style="box-shadow: 0 0 10px var(--color-neon-accent);">
+                            <i data-lucide="scan" class="w-full h-full text-neon-accent p-4"></i>
+                        </div>
+                        <h3 class="text-xl font-display mb-2 text-white">Neon Pulse Frame</h3>
+                        <p class="text-sm text-gray-400 mb-4">Frame avatar yang berdenyut dengan energi magenta.</p>
+                        <span class="text-2xl font-display text-neon-main mb-4" style="text-shadow: 0 0 5px var(--color-neon-main);">1,500 Pts</span>
+                        <button class="neon-button px-6 py-2 text-sm rounded uppercase w-full" onclick="showModal('Pembelian Shop', 'Ini adalah simulasi! Anda butuh 1,500 Poin untuk item ini.')">Beli Sekarang</button>
+                    </div>
+
+                    <!-- Item 2: XP Booster I -->
+                    <div class="cyber-card p-6 rounded-xl flex flex-col items-center text-center">
+                        <div class="w-24 h-24 bg-gray-900 rounded-lg border-4 border-cyan-400/80 p-1 mb-4 flex items-center justify-center" style="box-shadow: 0 0 10px #22D3EE;">
+                            <i data-lucide="rocket" class="w-16 h-16 text-cyan-400"></i>
+                        </div>
+                        <h3 class="text-xl font-display mb-2 text-white">XP Booster (1 Hari)</h3>
+                        <p class="text-sm text-gray-400 mb-4">Gandakan perolehan XP Anda selama 24 jam.</p>
+                        <span class="text-2xl font-display text-neon-main mb-4" style="text-shadow: 0 0 5px var(--color-neon-main);">500 Pts</span>
+                        <button class="neon-button px-6 py-2 text-sm rounded uppercase w-full" onclick="showModal('Pembelian Shop', 'Ini adalah simulasi! Anda butuh 500 Poin untuk item ini.')">Beli Sekarang</button>
+                    </div>
+
+                    <!-- Item 3: Rename Token -->
+                    <div class="cyber-card p-6 rounded-xl flex flex-col items-center text-center">
+                        <div class="w-24 h-24 bg-gray-900 rounded-full border-4 border-yellow-400/80 p-1 mb-4 flex items-center justify-center" style="box-shadow: 0 0 10px #FACC15;">
+                            <i data-lucide="pen-tool" class="w-16 h-16 text-yellow-400"></i>
+                        </div>
+                        <h3 class="text-xl font-display mb-2 text-white">Rename Token</h3>
+                        <p class="text-sm text-gray-400 mb-4">Ganti nama pengguna Anda sekali.</p>
+                        <span class="text-2xl font-display text-neon-main mb-4" style="text-shadow: 0 0 5px var(--color-neon-main);">2,000 Pts</span>
+                        <button class="neon-button px-6 py-2 text-sm rounded uppercase w-full" onclick="showModal('Pembelian Shop', 'Ini adalah simulasi! Anda butuh 2,000 Poin untuk item ini.')">Beli Sekarang</button>
+                    </div>
+                </div>
+            `
+        };
+
+        function updateProfilePageUI() {
+            // Update elemen di halaman profil
+            document.getElementById('profile-avatar-img-page').src = userData.avatar;
+            document.getElementById('profile-username-page').textContent = userData.username;
+            document.getElementById('profile-level-page').textContent = userData.level;
+            document.getElementById('profile-points-page').textContent = userData.points.toLocaleString();
+
+            const nextLevel = userData.level + 1;
+            document.getElementById('next-level-page').textContent = nextLevel;
+            document.getElementById('xp-text-page').textContent = `XP: ${userData.exp} / ${userData.expToNextLevel}`;
+
+            const expPercent = Math.min(100, (userData.exp / userData.expToNextLevel) * 100);
+            document.getElementById('xp-bar-fill-page').style.width = `${expPercent}%`;
+
+            // Rank Badge
+            const rankBadge = document.getElementById('profile-rank-badge-page');
+            rankBadge.textContent = userData.rank;
+            rankBadge.className = rankBadge.className.replace(/\btext-(?:cyan|magenta|yellow|white|indigo|red)-\d+\b/g, '');
+
+            let rankClass = '';
+            switch(userData.rank) {
+                case 'Bronze': rankClass = 'text-amber-500'; break;
+                case 'Silver': rankClass = 'text-gray-300'; break;
+                case 'Gold': rankClass = 'text-yellow-400'; break;
+                case 'Platinum': rankClass = 'text-cyan-400'; break;
+                case 'Diamond': rankClass = 'text-magenta-400'; break;
+                case 'Legend': rankClass = 'text-red-500 bg-gradient-to-r from-red-500 to-yellow-500 text-transparent bg-clip-text'; break;
+                default: rankClass = 'text-white'; break;
+            }
+            rankBadge.classList.add(rankClass);
+        }
+
+
+        function displayPage(pageName) {
+            const container = document.getElementById('app-container');
+            const template = pageTemplates[pageName];
+
+            if (template) {
+                container.innerHTML = template;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                // Panggil fungsi update spesifik
+                if (pageName === 'dashboard') {
+                    updateDashboardUI();
+                } else if (pageName === 'profile') {
+                    // Perlu panggil updateProfilePageUI setelah konten di-inject
+                    setTimeout(updateProfilePageUI, 0); // Jaminan DOM sudah ter-render
+                }
+
+                // Render Lucide Icons untuk halaman baru
+                lucide.createIcons();
+
+            } else {
+                container.innerHTML = `<div class="p-8 text-center text-red-500">Error: Halaman '${pageName}' tidak ditemukan.</div>`;
+            }
+        }
+
+        // --- LOGIKA TEMA ---
+        function setTheme(themeName) {
+            const body = document.body;
+            // Hapus semua kelas tema lama
+            body.classList.remove('theme-neon-cyber', 'theme-tech-minimalist', 'theme-galaxy-purple');
+            // Tambahkan kelas tema baru
+            body.classList.add(`theme-${themeName}`);
+            // Simpan ke data user
+            userData.theme = themeName;
+            saveUserData();
+        }
+
+        // --- MODAL SIMULASI ---
+        function showModal(title, content) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-content').textContent = content;
+            document.getElementById('message-modal').classList.remove('hidden');
+        }
+
+
+        // --- INIT APP ---
+        window.onload = function() {
+            // 1. Muat Data User
+            loadUserData();
+
+            // 2. Set Halaman Awal
+            displayPage('dashboard');
+
+            // 3. Render ikon di header/nav
+            lucide.createIcons();
+        };
+    </script>
 </body>
 </html>
