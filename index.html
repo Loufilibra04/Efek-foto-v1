@@ -109,14 +109,15 @@
             cursor: pointer;
             transition: all 0.3s;
             border: none !important; /* Hapus border skill node */
+            overflow: hidden; 
         }
-
-        /* Styling untuk gambar di dalam skill node */
-        .skill-node img {
-            width: 100%; /* Atur ukuran gambar agar pas di dalam node */
-            height: 80%;
-            object-fit: contain;
-            filter: drop-shadow(0 0 5px rgba(0,0,0,0.8)); /* Tambahkan sedikit bayangan pada gambar */
+        
+        /* Styling untuk Ikon di dalam skill node */
+        .skill-node i {
+            /* Atur ukuran ikon agar pas di dalam node */
+            width: 50% !important; 
+            height: 50% !important;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.8)); /* Tambahkan sedikit bayangan pada ikon */
         }
 
         /* Styling untuk bar XP/Level */
@@ -238,13 +239,13 @@
                 { trait: "Neurotisisme (Neuroticism)", value: 55 },
             ],
             skills: {
-                // Menggunakan imageUrl untuk skill nodes
-                center: { name: "Otak Logika (Core)", imageUrl: "https://i.supaimg.com/31b41f34-966d-48aa-9658-6e60474bdabe.jpg", color: "text-purple-400" },
+                // DIKEMBALIKAN KE IKON LUCIDE DAN WARNA
+                center: { name: "Otak Logika (Core)", icon: "brain", color: "text-purple-400", bg: "bg-purple-900" },
                 nodes: [
-                    { id: 'n1', name: "DevOps", imageUrl: "https://i.supaimg.com/7ab13293-96c7-4296-af8f-994a359d1da3.jpg", level: 80, details: ["AWS", "Docker", "Kubernetes", "CI/CD"] },
-                    { id: 'n2', name: "Frontend", imageUrl: "https://i.supaimg.com/bf4ae05b-2717-4c38-91ac-8d5c910b073c.jpg", level: 90, details: ["React", "Vue.js", "Tailwind CSS", "Aestetics"] },
-                    { id: 'n3', name: "Backend", imageUrl: "https://i.supaimg.com/8ddb192c-1fcb-4dec-8c81-fcb16f13728e.jpg", level: 85, details: ["Python (Django/Flask)", "Node.js (Express)", "Golang", "Microservices"] },
-                    { id: 'n4', name: "Data/ML", imageUrl: "https://i.supaimg.com/aed2bd10-4d55-4f2b-ab06-66784d37538f.jpg", level: 75, details: ["Python (Pandas, Scikit)", "SQL/NoSQL", "Data Modeling", "TensorFlow (Dasar)"] }
+                    { id: 'n1', name: "DevOps", icon: "cloud", level: 80, color: "text-blue-400", bg: "bg-blue-900", details: ["AWS", "Docker", "Kubernetes", "CI/CD"] },
+                    { id: 'n2', name: "Frontend", icon: "layout-grid", level: 90, color: "text-green-400", bg: "bg-green-900", details: ["React", "Vue.js", "Tailwind CSS", "Aestetics"] },
+                    { id: 'n3', name: "Backend", icon: "server", level: 85, color: "text-red-400", bg: "bg-red-900", details: ["Python (Django/Flask)", "Node.js (Express)", "Golang", "Microservices"] },
+                    { id: 'n4', name: "Data/ML", icon: "database", level: 75, color: "text-yellow-400", bg: "bg-yellow-900", details: ["Python (Pandas, Scikit)", "SQL/NoSQL", "Data Modeling", "TensorFlow (Dasar)"] }
                 ]
             },
             quests: [ // Proyek
@@ -391,33 +392,36 @@
             // Simulasikan Skill Tree dengan posisi absolut untuk node
             const centerNode = portfolioData.skills.center;
             const nodes = portfolioData.skills.nodes;
+            
+            // Posisi relatif untuk node
+            const nodePositions = [
+                { top: '15%', left: '25%' }, 
+                { top: '15%', right: '25%' },
+                { bottom: '15%', right: '25%' },
+                { bottom: '15%', left: '25%' }
+            ];
 
             // Membangun HTML untuk node tengah (CORE)
             let nodesHtml = `
-                <div id="skill-center" class="skill-node relative w-24 h-24 rounded-full flex flex-col items-center justify-center bg-purple-900 shadow-xl z-10" 
+                <div id="skill-center" class="skill-node relative w-28 h-28 rounded-full flex flex-col items-center justify-center ${centerNode.bg} shadow-xl z-10" 
                      style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                    <img src="${centerNode.imageUrl}" alt="${centerNode.name}" class="rounded-full w-16 h-16 object-cover" />
-                    <span class="text-xs mt-1 font-bold text-white text-center">${centerNode.name}</span>
+                    <i data-lucide="${centerNode.icon}" class="w-16 h-16 ${centerNode.color}"></i>
+                    <!-- Teks di bawah ikon -->
+                    <span class="absolute bottom-0 text-xs font-bold text-white text-center w-full bg-black/60 py-1">${centerNode.name}</span>
                 </div>`;
 
-            // Posisi relatif untuk node (simulasi radial)
-            const nodePositions = [
-                { top: '10%', left: '20%' },
-                { top: '10%', right: '20%' },
-                { bottom: '10%', right: '20%' },
-                { bottom: '10%', left: '20%' }
-            ];
-
+            // Node Samping
             nodes.forEach((node, index) => {
                 const pos = nodePositions[index % nodePositions.length];
                 const nodeStyle = `position: absolute; ${pos.top ? `top: ${pos.top};` : ''} ${pos.bottom ? `bottom: ${pos.bottom};` : ''} ${pos.left ? `left: ${pos.left};` : ''} ${pos.right ? `right: ${pos.right};` : ''}`;
 
                 nodesHtml += `
-                    <div id="skill-${node.id}" class="skill-node relative w-20 h-20 rounded-full flex flex-col items-center justify-center bg-gray-900 shadow-xl z-10" 
+                    <div id="skill-${node.id}" class="skill-node relative w-24 h-24 rounded-full flex flex-col items-center justify-center ${node.bg} shadow-xl z-10" 
                          style="${nodeStyle}" 
                          onclick="showSkillDetails('${node.id}')">
-                        <img src="${node.imageUrl}" alt="${node.name}" class="rounded-full w-12 h-12 object-cover" />
-                        <span class="text-xs mt-1 font-bold text-white text-center">${node.name}</span>
+                        <i data-lucide="${node.icon}" class="w-12 h-12 ${node.color}"></i>
+                        <!-- Teks di bawah ikon -->
+                        <span class="absolute bottom-0 text-xs mt-1 font-bold text-white text-center w-full bg-black/60 py-1">${node.name}</span>
                     </div>
                 `;
             });
@@ -441,7 +445,7 @@ ${nodesHtml}
                 </div>
             `;
             
-            // Render ulang ikon Lucide (walaupun di skill tree kita pakai image, lucide masih dipakai di tempat lain)
+            // Render ulang ikon
             renderIcons();
         }
 
