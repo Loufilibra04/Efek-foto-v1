@@ -5,16 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aulia Novice - Portofolio Gamifikasi</title>
     
-
-<script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     
-
-<script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* Mengatur font dan background seperti UI game gelap */
         body {
             font-family: 'Inter', sans-serif;
-            /* Latar belakang utama aplikasi */
+            /* Latar belakang utama aplikasi - ini akan terlihat di luar #app-container */
             background-image: url('https://i.supaimg.com/bf582b43-bdcf-41ac-8795-c3a1b971bbd6.jpg');
             background-size: cover; 
             background-position: center; 
@@ -25,34 +23,56 @@
             overflow-x: hidden;
         }
 
-        /* Styling spesifik untuk elemen UI game (Balok Kontainer) */
-        .game-panel {
-            /* MENGHILANGKAN GARIS (BORDER) DAN BACKGROUND IMAGE BERULANG */
-            background-image: none !important; /* Hapus gambar latar belakang dari panel */
-            background-color: rgba(22, 28, 41, 0.85); /* Opasitas gelap agar background utama tidak terlalu terang */
-            border: none; /* Hapus border */
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Pertahankan sedikit bayangan untuk kedalaman */
+        /* Kontainer utama aplikasi sekarang akan menutupi sebagian besar layar dan memiliki latar belakangnya sendiri */
+        #app-container {
+            /* Menggunakan gambar latar belakang yang sama */
+            background-image: url('https://i.supaimg.com/bf582b43-bdcf-41ac-8795-c3a1b971bbd6.jpg');
+            background-size: cover; 
+            background-position: center; 
+            background-repeat: no-repeat; 
+            background-attachment: fixed; 
+            background-color: rgba(22, 28, 41, 0.95); /* Overlay gelap agar gambar tidak terlalu terang */
+            border: 2px solid #4f46e5; /* Pertahankan border untuk nuansa game */
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.8); /* Glow lebih kuat */
             position: relative; 
             overflow: hidden; 
+            
+            /* Overlay agar gambar tidak terlalu terang */
+            isolation: isolate; /* Memastikan pseudo-element tidak mempengaruhi parent overflow */
         }
 
-        /* Hapus pseudo-element ::before yang sebelumnya digunakan untuk overlay */
-        .game-panel::before {
-            content: none;
+        #app-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(22, 28, 41, 0.95); /* Overlay gelap transparan di atas gambar */
+            z-index: -1; /* Di bawah konten */
+        }
+        /* Konten dalam app-container harus di atas overlay */
+        #app-container > * {
+            position: relative;
+            z-index: 1;
         }
 
-        /* Konten game-panel tidak perlu z-index lagi karena overlay sudah dihapus */
-        .game-panel > * {
-            position: static; 
-            z-index: auto;
-        }
 
-
-        /* Untuk memastikan teks di header dan footer tetap terbaca, tambahkan background gelap */
+        /* Header dan Footer sekarang bisa lebih solid karena app-container sudah mengurus background */
         header, footer {
-            background-color: rgba(17, 24, 39, 0.9); /* Agak lebih gelap dan solid */
+            background-color: rgba(17, 24, 39, 0.98); /* Hampir solid */
             backdrop-filter: blur(5px); 
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7); /* Tambahkan bayangan ke header/footer */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7); 
+            z-index: 10; /* Pastikan di atas konten utama */
+        }
+        header { border-bottom: 1px solid #4f46e5; }
+        footer { border-top: 1px solid #4f46e5; }
+
+        /* General panel styling (untuk konten di dalam app-container) */
+        .game-content-panel {
+            background-color: rgba(17, 24, 39, 0.7); /* Panel konten lebih transparan, hanya gelap */
+            border: 1px solid #4f46e5;
+            box-shadow: 0 0 10px rgba(79, 70, 229, 0.4);
         }
 
         .resource-icon {
@@ -103,24 +123,18 @@
         /* Override background untuk main-content saat di halaman map */
         #main-content.map-background > div {
             background-color: rgba(17, 24, 39, 0.85) !important; /* Pertahankan kotak teks map agar terbaca */
-            border: none !important;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5) !important;
+            border: 1px solid #4f46e5 !important; /* Tambah border lagi untuk kotak map */
+            box-shadow: 0 0 10px rgba(79, 70, 229, 0.4) !important;
         }
         
     </style>
 </head>
 <body class="p-4 md:p-8">
 
-    
+    <!-- Kontainer Utama Aplikasi --><div id="app-container" class="max-w-full mx-auto min-h-[85vh] rounded-xl p-0 overflow-hidden">
 
-<div id="app-container" class="max-w-6xl mx-auto min-h-[85vh] game-panel rounded-xl p-0 overflow-hidden">
-
-        
-
-<header class="flex justify-between items-center p-4 border-b border-indigo-700/50">
-            
-
-<div id="header-profile" class="flex items-center space-x-3 bg-gray-800 p-2 rounded-full border border-gray-700 shadow-xl">
+        <!-- HEADER UI GAME (Status Bar) --><header class="flex justify-between items-center p-4">
+            <!-- Profil Singkat --><div id="header-profile" class="flex items-center space-x-3 bg-gray-800 p-2 rounded-full border border-gray-700 shadow-xl">
                 <img id="profile-avatar-sm" src="https://i.supaimg.com/05ce630e-a6e3-448c-89ad-efaab61782e2.jpg" class="rounded-full w-10 h-10 border-2 border-yellow-400 object-cover" alt="Avatar">
                 <div>
                     <span class="text-sm font-bold text-yellow-300" id="profile-name-header">Aulia Novice</span>
@@ -133,9 +147,7 @@
                 </div>
             </div>
 
-            
-
-<div class="flex space-x-4">
+            <!-- Sumber Daya (Resources) --><div class="flex space-x-4">
                 <div class="flex items-center space-x-2 bg-gray-800 p-2 rounded-full border border-gray-700 text-sm">
                     <i data-lucide="hourglass" class="w-5 h-5 text-indigo-400 resource-icon"></i>
                     <span id="resource-crystal">530</span>
@@ -150,16 +162,10 @@
             </div>
         </header>
 
-        
+        <!-- KONTEN UTAMA (Tempat Halaman Dimuat) --><main id="main-content" class="p-6 md:p-8 min-h-[70vh] relative">
+            <!-- Konten akan dimuat di sini oleh JS --></main>
 
-<main id="main-content" class="p-6 md:p-8 min-h-[70vh] relative">
-            
-
-</main>
-
-        
-
-<footer class="p-4 border-t border-indigo-700/50 flex justify-center space-x-8 md:space-x-16">
+        <!-- FOOTER UI GAME (Navigation Bar / World Map Icons) --><footer class="p-4 flex justify-center space-x-8 md:space-x-16">
             <button onclick="navigate('map')" id="nav-map" class="nav-icon-container flex flex-col items-center text-xs text-gray-400 hover:text-white transition duration-200 p-2 rounded-lg active-nav-icon">
                 <i data-lucide="map" class="w-8 h-8 md:w-10 md:h-10 text-red-400"></i>
                 <span class="mt-1">Peta Dunia</span>
@@ -183,9 +189,7 @@
         </footer>
     </div>
 
-    
-
-<script>
+    <!-- JavaScript untuk Navigasi, Data, dan Rendering --><script>
         // --- DATA PORTFOLIO ---
         const portfolioData = {
             name: "Aulia Novice",
@@ -258,7 +262,7 @@
             // Catatan: Di halaman map, kita menggunakan div di dalamnya untuk memberi background gelap
             // sehingga latar belakang utama (body) tetap terlihat.
             contentDiv.innerHTML = `
-                <div class="relative z-10 text-center bg-gray-900/50 p-8 rounded-xl shadow-2xl">
+                <div class="relative z-10 text-center game-content-panel p-8 rounded-xl shadow-2xl">
                     <h1 class="text-4xl md:text-6xl font-extrabold text-white tracking-widest text-shadow-lg" style="text-shadow: 0 0 10px #fcd34d;">SELAMAT DATANG, PAHLAWAN!</h1>
                     <p class="mt-4 text-xl text-yellow-300">Jelajahi keahlian dan pencapaian ${portfolioData.name}.</p>
                     <div class="mt-8 flex justify-center space-x-6">
@@ -292,9 +296,7 @@
             contentDiv.innerHTML = `
                 <h2 class="text-3xl font-bold mb-6 text-yellow-300 border-b border-indigo-600 pb-2">PROFIL PAHLAWAN</h2>
                 <div class="grid md:grid-cols-2 gap-8">
-                    
-
-<div class="game-panel p-6 rounded-xl shadow-2xl">
+                    <!-- Kartu Karakter/Statistik --><div class="game-content-panel p-6 rounded-xl shadow-2xl">
                         <div class="flex items-center space-x-4 mb-4">
                             <img src="https://i.supaimg.com/05ce630e-a6e3-448c-89ad-efaab61782e2.jpg" class="rounded-lg border-4 border-yellow-400 w-24 h-24 object-cover" alt="Avatar Pixel">
                             <div>
@@ -303,9 +305,7 @@
                             </div>
                         </div>
 
-                        
-
-<div class="mt-4">
+                        <!-- Level & XP Bar --><div class="mt-4">
                             <div class="flex justify-between text-lg font-bold">
                                 <span class="text-yellow-400">Lv. ${portfolioData.level}</span>
                                 <span class="text-sm text-gray-400">${portfolioData.xp} / ${portfolioData.xpMax} XP</span>
@@ -320,17 +320,13 @@
                         </p>
                     </div>
 
-                    
-
-<div class="game-panel p-6 rounded-xl shadow-2xl">
+                    <!-- Statistik Kepribadian/Keterampilan Lunak --><div class="game-content-panel p-6 rounded-xl shadow-2xl">
                         <h3 class="text-xl font-bold mb-4 text-indigo-400 border-b border-gray-700 pb-2">STATISTIK KEPRIBADIAN</h3>
                         ${personalityHtml}
                     </div>
                 </div>
                 
-                
-
-<div class="game-panel p-6 rounded-xl shadow-2xl mt-8">
+                <!-- Kontak (Item Toko/Hubungi) --><div class="game-content-panel p-6 rounded-xl shadow-2xl mt-8">
                     <h3 class="text-xl font-bold mb-4 text-red-400 border-b border-gray-700 pb-2">INVENTARIS & KONTAK</h3>
                     <div class="flex flex-wrap gap-4">
                         <a href="#" class="flex items-center space-x-2 text-white hover:text-red-400 transition" target="_blank">
@@ -391,14 +387,10 @@
             // Container untuk Skill Tree
             contentDiv.innerHTML = `
                 <h2 class="text-3xl font-bold mb-6 text-yellow-300 border-b border-indigo-600 pb-2 w-full text-center">POHON KEAHLIAN (SKILL TREE)</h2>
-                <div class="relative w-full h-[600px] game-panel p-4 flex items-center justify-center">
-                    
-
-${nodesHtml}
+                <div class="relative w-full h-[600px] game-content-panel p-4 flex items-center justify-center">
+                    <!-- Area untuk node dan garis -->${nodesHtml}
                 </div>
-                
-
-<div id="skill-details-panel" class="game-panel mt-6 p-4 w-full md:w-1/2 rounded-xl border-t-4 border-yellow-500 hidden">
+                <!-- Panel Detail Skill --><div id="skill-details-panel" class="game-content-panel mt-6 p-4 w-full md:w-1/2 rounded-xl border-t-4 border-yellow-500 hidden">
                     <h3 class="text-xl font-bold text-yellow-300 mb-2" id="skill-detail-title">Pilih Node Keahlian</h3>
                     <p class="text-sm text-gray-400" id="skill-detail-level">Level: -</p>
                     <ul class="list-disc list-inside mt-2 text-gray-300" id="skill-detail-list">
@@ -430,7 +422,7 @@ ${nodesHtml}
             contentDiv.className = 'p-6 md:p-8 min-h-[70vh] relative'; // Reset class
             contentDiv.classList.remove('map-background'); // Hapus class map-background
             const questsHtml = portfolioData.quests.map(quest => `
-                <div class="game-panel p-4 mb-4 rounded-lg flex justify-between items-center transition duration-300 hover:bg-gray-800 border-l-4 border-indigo-400">
+                <div class="game-content-panel p-4 mb-4 rounded-lg flex justify-between items-center transition duration-300 hover:bg-gray-800 border-l-4 border-indigo-400">
                     <div class="flex-grow">
                         <h3 class="text-lg font-bold text-white">${quest.title}</h3>
                         <p class="text-xs font-semibold text-yellow-400 mt-1">${quest.type}</p>
@@ -461,7 +453,7 @@ ${nodesHtml}
             contentDiv.className = 'p-6 md:p-8 min-h-[70vh] relative'; // Reset class
             contentDiv.classList.remove('map-background'); // Hapus class map-background
             const educationHtml = portfolioData.education.map(edu => `
-                <div class="game-panel p-6 rounded-xl shadow-xl border-t-8 border-${edu.color}-500 flex flex-col items-center text-center">
+                <div class="game-content-panel p-6 rounded-xl shadow-xl border-t-8 border-${edu.color}-500 flex flex-col items-center text-center">
                     <i data-lucide="${edu.icon}" class="w-16 h-16 text-${edu.color}-400 mb-3"></i>
                     <h3 class="text-xl font-bold text-white">${edu.title}</h3>
                     <p class="text-sm text-yellow-400">${edu.institution}</p>
