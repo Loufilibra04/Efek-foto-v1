@@ -393,12 +393,13 @@
             const centerNode = portfolioData.skills.center;
             const nodes = portfolioData.skills.nodes;
             
-            // Posisi relatif untuk node
+            // Posisi relatif untuk node. Disesuaikan untuk memberi jarak lebih jauh dari node pusat 
+            // agar tidak 'nempel', terutama di layar kecil.
             const nodePositions = [
-                { top: '15%', left: '25%' }, 
-                { top: '15%', right: '25%' },
-                { bottom: '15%', right: '25%' },
-                { bottom: '15%', left: '25%' }
+                { top: '10%', left: '10%' }, 
+                { top: '10%', right: '10%' },
+                { bottom: '10%', right: '10%' },
+                { bottom: '10%', left: '10%' }
             ];
 
             // Membangun HTML untuk node tengah (CORE)
