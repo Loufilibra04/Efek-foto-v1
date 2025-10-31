@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tempat Curhat 💬</title>
 
-  <!-- Tailwind CSS CDN untuk styling modern dan responsif -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Konfigurasi Tailwind untuk font Inter dan warna kustom -->
+  <!-- Konfigurasi Tailwind untuk Font Inter dan warna Facebook (Biru) -->
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            'primary': '#4F46E5', // Indigo 600
-            'primary-dark': '#4338CA', // Indigo 700
-            'accent': '#10B981', // Emerald 500
-            'bg-light': '#F9FAFB', // Light gray background
+            'fb-blue': '#1877F2',
+            'fb-gray': '#F0F2F5',
+            'fb-dark': '#3A3B3C',
+            'fb-dark-bg': '#18191A',
           },
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
@@ -27,34 +27,61 @@
     }
   </script>
 
-  <!-- Google Font: Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Google Font: Inter (Font Modern) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    /* Styling dasar untuk memastikan body menggunakan font Inter */
-    body { font-family: 'Inter', sans-serif; }
+    /* Mengatur body default agar sesuai dengan mode terang (light mode) */
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background-color: #F0F2F5; /* fb-gray */
+      transition: background-color 0.3s;
+    }
+
+    /* Mengganti warna scrollbar untuk estetika */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
     
+    /* Input dan Button default styling (overridden by Tailwind classes) */
+    input[type="text"], input[type="email"], input[type="password"], textarea { 
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        width: 100%;
+        font-size: 16px;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    input:focus, textarea:focus {
+        outline: none;
+        border-color: #1877F2;
+        box-shadow: 0 0 0 1px #1877F2;
+    }
+
     /* Styling khusus untuk modal agar tetap di tengah */
     #profileModal { 
       display:none; 
       position:fixed; 
       inset:0; 
-      background: rgba(0,0,0,0.45); 
+      background: rgba(0,0,0,0.5); 
       align-items:center; 
       justify-content:center; 
-      z-index:999; 
+      z-index:1000; 
+    }
+
+    /* KARTU POSTING (untuk konsistensi tampilan seperti gambar) */
+    .post-card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        margin-bottom: 12px;
     }
   </style>
 
   <script type="module">
-    // --- Firebase SDK (CDN) ---
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
-      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc } 
-      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-    // --- CONFIG FIREBASE (pakai config kamu) ---
+    // --- Variabel Global Canvas ---
+    // Di lingkungan ini, kita harus menggunakan variabel global yang disediakan (jika ada)
     const firebaseConfig = {
       apiKey: "AIzaSyDqatY8EgkSDgOp799xdb1TqwdCwoda-7I",
       authDomain: "curhatan-959ee.firebaseapp.com",
@@ -65,39 +92,81 @@
       measurementId: "G-4Q1V1J0800"
     };
 
+    // --- Firebase SDK (CDN) ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // --- DOM ---
+    // --- Variabel UI State (Untuk Navigasi Halaman) ---
+    let currentPage = 'Auth'; // Bisa 'Auth', 'Main', atau 'Post'
+    
+    // --- DOM Elements ---
+    const authView = document.getElementById("authView");
+    const mainView = document.getElementById("mainView");
+    const postView = document.getElementById("postView");
     const loginForm = document.getElementById("loginForm");
     const registerForm = document.getElementById("registerForm");
     const curhatForm = document.getElementById("curhatForm");
     const curhatList = document.getElementById("curhatList");
-    const userStatus = document.getElementById("userStatus");
-    const logoutBtn = document.getElementById("logoutBtn");
-
+    const userStatusDisplay = document.getElementById("userStatusDisplay"); // Display nama user di header
     const profileModal = document.getElementById("profileModal");
     const profileForm = document.getElementById("profileForm");
     const profileNameInput = document.getElementById("profileName");
+    const postFormBackBtn = document.getElementById("postFormBackBtn");
+    const postUsernameDisplay = document.getElementById("postUsernameDisplay");
 
-    // --- REGISTER ---
+    // --- Fungsi Navigasi Halaman ---
+    function navigateTo(page) {
+      currentPage = page;
+      authView.style.display = 'none';
+      mainView.style.display = 'none';
+      postView.style.display = 'none';
+
+      if (page === 'Auth') {
+        authView.style.display = 'block';
+      } else if (page === 'Main') {
+        mainView.style.display = 'block';
+      } else if (page === 'Post') {
+        postView.style.display = 'flex';
+      }
+    }
+
+    // --- EVENT LISTENERS UI ---
+    document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+    document.getElementById('goToPostBtn').addEventListener('click', () => navigateTo('Post'));
+    postFormBackBtn.addEventListener('click', () => navigateTo('Main'));
+    document.getElementById('authSwitchToRegister').addEventListener('click', () => {
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('registerCard').style.display = 'block';
+    });
+    document.getElementById('authSwitchToLogin').addEventListener('click', () => {
+      document.getElementById('registerCard').style.display = 'none';
+      document.getElementById('loginCard').style.display = 'block';
+    });
+
+
+    // --- REGISTER (LOGIKA TIDAK DIUBAH) ---
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = e.target.email.value;
       const pass = e.target.password.value;
       try {
-        const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-        // Setelah register, langsung minta isi nama -> onAuthStateChanged akan handle modal
+        await createUserWithEmailAndPassword(auth, email, pass);
         registerForm.reset();
+        // onAuthStateChanged akan handle modal profil
       } catch (err) {
-        // Ganti alert() dengan UI modal/message box yang lebih baik jika ini aplikasi produksi
         console.error("Gagal daftar:", err);
-        alert("Gagal daftar: " + err.message);
+        showModalMessage("Gagal daftar", err.message);
       }
     });
 
-    // --- LOGIN ---
+    // --- LOGIN (LOGIKA TIDAK DIUBAH) ---
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = e.target.email.value;
@@ -106,22 +175,18 @@
         await signInWithEmailAndPassword(auth, email, pass);
         loginForm.reset();
       } catch (err) {
-        // Ganti alert()
         console.error("Gagal login:", err);
-        alert("Gagal login: " + err.message);
+        showModalMessage("Gagal masuk", err.message);
       }
     });
 
-    // --- LOGOUT ---
-    logoutBtn.addEventListener("click", () => signOut(auth));
-
-    // --- SAVE PROFILE NAME (updateAuth + users collection) ---
+    // --- SAVE PROFILE NAME (LOGIKA TIDAK DIUBAH) ---
     async function saveProfileName(name) {
       const user = auth.currentUser;
       if (!user) return;
       // update displayName di Firebase Auth
       await updateProfile(user, { displayName: name });
-      // simpan juga di koleksi users agar bisa di-query nanti
+      // simpan juga di koleksi users
       await setDoc(doc(db, "users", user.uid), {
         name,
         email: user.email,
@@ -132,17 +197,18 @@
     profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = profileNameInput.value.trim();
-      if (!name) return alert("Nama tidak boleh kosong"); // Ganti alert()
+      if (!name) return showModalMessage("Perhatian", "Nama tidak boleh kosong");
       try {
         await saveProfileName(name);
         profileModal.style.display = "none";
+        navigateTo('Main'); // Arahkan ke halaman utama setelah set nama
       } catch (err) {
         console.error("Gagal simpan nama:", err);
-        alert("Gagal simpan nama: " + err.message); // Ganti alert()
+        showModalMessage("Gagal simpan nama", err.message);
       }
     });
 
-    // --- AUTH STATE ---
+    // --- AUTH STATE (LOGIKA DIUBAH SEDIKIT UNTUK NAVIGASI) ---
     let unsubscribeCurhatListener = null;
     onAuthStateChanged(auth, async (user) => {
       // stop listener lama kalau ada
@@ -152,37 +218,37 @@
       }
 
       if (user) {
-        // kalau displayName belum ada, minta user isi nama profil dulu
+        const displayName = user.displayName || user.email;
+        userStatusDisplay.textContent = displayName;
+        postUsernameDisplay.textContent = displayName; // Update nama di form posting
+        
+        // kalau displayName belum ada, paksa isi modal profil
         if (!user.displayName) {
-          profileModal.style.display = "flex"; // Gunakan flex untuk centering
-          userStatus.textContent = `Login sebagai: ${user.email} (Isi nama profil dulu)`;
-          document.querySelector(".auth-section").style.display = "none";
-          document.querySelector(".main-section").style.display = "none";
+          profileModal.style.display = "flex";
+          navigateTo('Auth'); // Sembunyikan semua view lain
           return;
         }
 
-        // sudah punya displayName
-        userStatus.textContent = `Login sebagai: ${user.displayName}`;
-        document.querySelector(".auth-section").style.display = "none";
-        document.querySelector(".main-section").style.display = "block";
+        // sudah punya displayName, arahkan ke Main view
+        profileModal.style.display = "none";
+        navigateTo('Main');
 
         // start listen curhatan real-time
         unsubscribeCurhatListener = listenCurhatan();
       } else {
-        userStatus.textContent = "Belum login";
-        document.querySelector(".auth-section").style.display = "block";
-        document.querySelector(".main-section").style.display = "none";
-        profileModal.style.display = "none";
+        // Belum login, arahkan ke Auth view
+        userStatusDisplay.textContent = "Guest";
+        navigateTo('Auth');
       }
     });
 
-    // --- POST CURHATAN ---
+    // --- POST CURHATAN (LOGIKA TIDAK DIUBAH) ---
     curhatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = e.target.text.value.trim();
       if (!text) return;
       const user = auth.currentUser;
-      if (!user) return alert("Harus login dulu"); // Ganti alert()
+      if (!user) return showModalMessage("Kesalahan", "Harus login dulu");
       const userName = user.displayName || user.email;
       try {
         await addDoc(collection(db, "curhatan"), {
@@ -193,13 +259,14 @@
           comments: []
         });
         curhatForm.reset();
+        navigateTo('Main'); // Kembali ke feed setelah posting
       } catch (err) {
         console.error("Gagal posting:", err);
-        alert("Gagal posting: " + err.message); // Ganti alert()
+        showModalMessage("Gagal posting", err.message);
       }
     });
 
-    // --- LISTEN REAL-TIME CURHATAN ---
+    // --- LISTEN REAL-TIME CURHATAN (LOGIKA TIDAK DIUBAH) ---
     function listenCurhatan() {
       const q = query(collection(db, "curhatan"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(q, (snapshot) => {
@@ -208,47 +275,88 @@
           const data = docSnap.data();
           const id = docSnap.id;
 
-          // gunakan userName bila ada, kalau tidak fallback ke user/email
           const displayName = data.userName || data.user || "Anon";
+          const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
+          const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
 
           const div = document.createElement("div");
-          // Perbarui class untuk styling Tailwind
-          div.className = "curhat p-4 bg-white rounded-xl shadow-md mt-4 border border-gray-100";
+          div.className = "post-card mb-3 shadow-md"; // Class kartu posting
           div.innerHTML = `
-            <!-- Curhatan Utama -->
-            <p class="text-gray-800 break-words">
-              <span class="font-bold text-primary">${escapeHtml(displayName)}</span>: ${escapeHtml(data.text)}
-            </p>
-            
-            <!-- Komentar -->
-            <div class="comments mt-3 space-y-2 border-t border-gray-100 pt-3">
-              ${(data.comments || []).map(c => `
-                <div class="flex items-start text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
-                  <span class="mr-2 text-primary-dark">💬</span>
-                  <p class="flex-grow break-words">
-                    <span class="font-medium text-gray-700">${escapeHtml(c.userName || c.user)}</span>: ${escapeHtml(c.text)}
-                  </p>
+            <div class="p-4">
+                <!-- Header Post -->
+                <div class="flex items-center mb-3">
+                    <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${displayName[0]}</div>
+                    <div class="flex-grow">
+                        <p class="font-semibold text-gray-900">${escapeHtml(displayName)}</p>
+                        <p class="text-xs text-gray-500">${time} · Publik</p>
+                    </div>
+                    ${isOwnPost ? '<div class="text-xs text-fb-blue">Anda</div>' : ''}
                 </div>
-              `).join("")}
+
+                <!-- Konten Curhatan -->
+                <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
+
+                <!-- Aksi (Like/Comment - Placeholder UI) -->
+                <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
+                        Suka
+                    </button>
+                    <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        Komentar (${(data.comments || []).length})
+                    </button>
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
+                        Bagikan
+                    </button>
+                </div>
             </div>
-            
-            <!-- Form Komentar -->
-            <form class="commentForm mt-3 flex gap-2">
-              <input type="text" placeholder="Tulis komentar..." required 
-                class="flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary-dark transition duration-150 text-sm"
-              >
-              <button class="bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-lg transition duration-150 text-sm shadow-md">
-                Kirim
-              </button>
-            </form>
+
+            <!-- Area Komentar Tersembunyi -->
+            <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
+                <div class="comments space-y-3 mb-4">
+                  ${(data.comments || []).map(c => `
+                    <div class="flex items-start">
+                        <div class="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold mr-2">${c.userName ? c.userName[0] : 'A'}</div>
+                        <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
+                            <p class="font-semibold text-sm text-gray-800">${escapeHtml(c.userName || c.user)}</p>
+                            <p class="text-sm text-gray-700 break-words">${escapeHtml(c.text)}</p>
+                        </div>
+                    </div>
+                  `).join("")}
+                </div>
+                
+                <form class="commentForm flex gap-2 items-center">
+                    <div class="w-8 h-8 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-sm">
+                        ${auth.currentUser ? auth.currentUser.displayName[0] : 'A'}
+                    </div>
+                    <input type="text" placeholder="Tulis komentar..." required
+                        class="flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
+                    >
+                    <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m8 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                </form>
+            </div>
           `;
+          
+          // Toggle Komentar
+          const commentToggleBtn = div.querySelector(".comment-toggle");
+          const commentsArea = div.querySelector(".comments-area");
+          commentToggleBtn.addEventListener('click', () => {
+            commentsArea.classList.toggle('hidden');
+          });
+
+          // Form Komentar Logic
           const form = div.querySelector(".commentForm");
           form.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const commentText = e.target[0].value.trim();
+            const commentInput = e.target.querySelector('input[type="text"]');
+            const commentText = commentInput.value.trim();
             if (!commentText) return;
             const user = auth.currentUser;
-            if (!user) return alert("Harus login dulu"); // Ganti alert()
+            if (!user) return showModalMessage("Kesalahan", "Harus login dulu untuk berkomentar!");
             const commenterName = user.displayName || user.email;
             try {
               await updateDoc(doc(db, "curhatan", id), {
@@ -257,7 +365,7 @@
               e.target.reset();
             } catch (err) {
               console.error("Gagal kirim komentar:", err);
-              alert("Gagal kirim komentar: " + err.message); // Ganti alert()
+              showModalMessage("Gagal kirim komentar", err.message);
             }
           });
           curhatList.appendChild(div);
@@ -279,93 +387,210 @@
         .replaceAll("'", "&#039;");
     }
 
+    // --- Helper: Modal Pesan (Mengganti alert()) ---
+    const msgModal = document.getElementById('messageModal');
+    const msgTitle = document.getElementById('messageTitle');
+    const msgContent = document.getElementById('messageContent');
+    document.getElementById('messageCloseBtn').addEventListener('click', () => msgModal.style.display = 'none');
+    
+    function showModalMessage(title, content) {
+        msgTitle.textContent = title;
+        msgContent.textContent = content;
+        msgModal.style.display = 'flex';
+    }
+
   </script>
 </head>
 
-<body class="min-h-screen bg-bg-light p-4 md:p-8">
-  <div class="container mx-auto max-w-xl bg-white p-6 md:p-8 rounded-2xl shadow-2xl shadow-indigo-200">
-    
-    <!-- HEADER -->
-    <header class="mb-6 pb-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-      <h1 class="text-3xl font-extrabold text-primary mb-2 sm:mb-0">Tempat Curhat 💬</h1>
-      <div class="flex items-center space-x-3">
-        <p id="userStatus" class="text-sm text-gray-500 font-medium whitespace-nowrap">Belum login</p>
-        <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-3 py-1.5 rounded-lg transition duration-150 shadow-md text-sm">
-          Logout
-        </button>
+<body>
+  
+  <!-- MODAL PESAN (PENGGANTI ALERT) -->
+  <div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[2000]">
+      <div class="bg-white p-6 rounded-xl shadow-2xl w-11/12 max-w-xs text-center">
+          <h4 id="messageTitle" class="text-xl font-bold mb-3 text-red-600">Pesan</h4>
+          <p id="messageContent" class="text-gray-700 mb-4"></p>
+          <button id="messageCloseBtn" class="bg-fb-blue hover:bg-opacity-80 text-white font-semibold py-2 px-6 rounded-lg transition duration-150">Tutup</button>
       </div>
-    </header>
-
-    <!-- AUTH SECTION (Login/Register) -->
-    <div class="auth-section space-y-6">
-      <!-- Login Card -->
-      <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-lg">
-        <h3 class="text-xl font-bold text-primary mb-4">Masuk ke Akun</h3>
-        <form id="loginForm" class="space-y-4">
-          <input type="email" name="email" placeholder="Email" required
-            class="w-full px-4 py-3 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150"
-          >
-          <input type="password" name="password" placeholder="Password" required
-            class="w-full px-4 py-3 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150"
-          >
-          <button class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
-            Login
-          </button>
-        </form>
-      </div>
-
-      <!-- Register Card -->
-      <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-lg">
-        <h3 class="text-xl font-bold text-gray-700 mb-4">Daftar Akun Baru</h3>
-        <form id="registerForm" class="space-y-4">
-          <input type="email" name="email" placeholder="Email baru" required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition duration-150"
-          >
-          <input type="password" name="password" placeholder="Password baru" required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition duration-150"
-          >
-          <button class="w-full bg-accent hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
-            Daftar
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <!-- MAIN SECTION (Curhat Form & List) -->
-    <div class="main-section" style="display:none;">
-      <!-- Post Curhat Form -->
-      <form id="curhatForm" class="bg-white p-6 mb-6 rounded-xl shadow-lg border border-gray-100">
-        <h3 class="text-xl font-bold text-gray-700 mb-3">Tulis Curhatanmu</h3>
-        <textarea name="text" rows="4" placeholder="Apa yang ada di pikiranmu saat ini?" required
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150 resize-none mb-3"
-        ></textarea>
-        <button class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-lg transition duration-150 shadow-lg">
-          <span class="mr-2">✨</span> Posting Curhatan
-        </button>
-      </form>
-      
-      <!-- Curhat List will be populated here by JS -->
-      <h3 class="text-2xl font-bold text-gray-700 mb-4 mt-8">Curhatan Terbaru</h3>
-      <div id="curhatList" class="space-y-4">
-        <!-- Curhat items injected here -->
-      </div>
-    </div>
   </div>
 
-  <!-- Modal untuk set nama (Wajib diisi setelah daftar/login pertama) -->
-  <div id="profileModal" class="flex">
-    <div class="box bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm text-center transform transition-all duration-300">
-      <h3 class="text-2xl font-extrabold text-primary mb-2">Selamat datang! 👋</h3>
-      <p class="text-gray-600 mb-6">Untuk mulai curhat, tolong isi nama profil yang ingin kamu gunakan.</p>
+  <!-- MODAL UNTUK SET NAMA (Wajib diisi setelah daftar/login pertama) -->
+  <div id="profileModal" class="hidden">
+    <div class="box bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm text-center">
+      <h3 class="text-2xl font-extrabold text-fb-blue mb-2">Selamat datang! 👋</h3>
+      <p class="text-gray-600 mb-6">Tolong isi nama profil yang ingin kamu gunakan.</p>
       <form id="profileForm" class="space-y-4">
         <input id="profileName" type="text" placeholder="Nama yang mau ditampilkan" required 
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition duration-150"
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fb-blue focus:border-fb-blue"
         />
-        <button type="submit" class="w-full bg-accent hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+        <button type="submit" class="w-full bg-fb-blue hover:bg-opacity-80 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
           Simpan Nama
         </button>
       </form>
     </div>
   </div>
+
+
+  <!-- 1. AUTH VIEW (LOGIN / DAFTAR) -->
+  <div id="authView" class="hidden min-h-screen flex items-center justify-center bg-white p-4">
+    <div class="w-full max-w-md">
+      <!-- Logo FB di gambar -->
+      <div class="text-center mb-10">
+        <svg class="mx-auto" fill="#1877F2" viewBox="0 0 24 24" width="48px" height="48px"><path d="M12 2C6.477 2 2 6.477 2 12c0 5.016 3.655 9.182 8.437 9.879V14.92h-2.92v-2.92h2.92V9.69c0-2.887 1.761-4.47 4.33-4.47.828 0 1.54.062 1.748.09V7.89h-1.571c-1.39 0-1.66.66-1.66 1.63V11.8h3.284l-.527 2.92h-2.757v6.959C18.345 21.182 22 17.016 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      </div>
+
+      <!-- Login Card -->
+      <div id="loginCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+        <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Masuk ke Tempat Curhat</h3>
+        <form id="loginForm" class="space-y-4">
+          <input type="email" name="email" placeholder="Email" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue"
+          >
+          <input type="password" name="password" placeholder="Kata Sandi" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue"
+          >
+          <button class="w-full bg-fb-blue hover:bg-opacity-90 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+            Login
+          </button>
+        </form>
+        <p class="text-center mt-4 text-sm">
+            <a href="#" class="text-fb-blue hover:underline">Lupa kata sandi?</a>
+        </p>
+        <div class="border-t border-gray-200 my-6"></div>
+        <button id="authSwitchToRegister" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-150">
+          Buat Akun Baru
+        </button>
+      </div>
+      
+      <!-- Register Card (Hidden by default) -->
+      <div id="registerCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
+        <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Daftar Akun Baru</h3>
+        <form id="registerForm" class="space-y-4">
+          <input type="email" name="email" placeholder="Email baru" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue"
+          >
+          <input type="password" name="password" placeholder="Password baru" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue"
+          >
+          <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+            Daftar
+          </button>
+        </form>
+        <p class="text-center mt-4 text-sm">
+            Sudah punya akun? <a href="#" id="authSwitchToLogin" class="text-fb-blue hover:underline">Login di sini</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 2. MAIN VIEW (FEED) -->
+  <div id="mainView" class="hidden pt-[56px] min-h-screen">
+    
+    <!-- HEADER NAVBAR (Fixed Top) -->
+    <nav class="fixed top-0 left-0 right-0 bg-white shadow-md z-10">
+      <div class="flex items-center justify-between max-w-xl mx-auto p-3">
+        <h1 class="text-2xl font-extrabold text-fb-blue">CurhatApp</h1>
+        <div class="flex items-center space-x-3">
+            <button id="logoutBtn" class="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition duration-150">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
+        </div>
+      </div>
+      <!-- Tab Navigasi (Placeholder untuk visual) -->
+      <div class="flex justify-around border-t border-gray-200 text-gray-500">
+        <div class="p-3 text-fb-blue border-b-2 border-fb-blue font-semibold">Feed Curhat</div>
+        <div class="p-3 hover:bg-gray-100 transition duration-150">Notifikasi</div>
+      </div>
+    </nav>
+
+    <div class="max-w-xl mx-auto p-3">
+        
+        <!-- Curhat Form Trigger (Atas Feed) -->
+        <div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
+                    <span id="userStatusDisplay" class="font-semibold text-white">?</span>
+                </div>
+                <button id="goToPostBtn" class="flex-grow text-left bg-fb-gray p-2.5 rounded-full text-gray-600 hover:bg-gray-200 transition duration-150">
+                    Apa yang Anda pikirkan?
+                </button>
+            </div>
+            <div class="border-t border-gray-200 mt-3 pt-3 flex justify-around">
+                <div class="flex items-center text-red-500 font-medium">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Foto/Video
+                </div>
+                <div class="flex items-center text-green-500 font-medium">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Perasaan
+                </div>
+            </div>
+        </div>
+
+        <!-- Curhat List / Feed -->
+        <div id="curhatList">
+          <p class="text-center text-gray-500 mt-10">Memuat curhatan...</p>
+        </div>
+    </div>
+  </div>
+
+
+  <!-- 3. POST VIEW (FORM POSTING) -->
+  <div id="postView" class="hidden fixed inset-0 flex flex-col bg-white z-20">
+    <!-- Header Form Posting -->
+    <header class="flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
+        <button id="postFormBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </button>
+        <h2 class="text-xl font-bold text-gray-900">Buat Curhatan</h2>
+        <button id="submitPostBtn" form="curhatForm" class="bg-fb-blue hover:bg-opacity-80 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 disabled:bg-gray-400">
+            POSTING
+        </button>
+    </header>
+
+    <!-- Konten Form Posting -->
+    <div class="flex-grow p-4 overflow-y-auto">
+        <div class="flex items-center mb-6">
+            <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
+                <span id="postUsernameDisplay" class="font-semibold text-white">?</span>
+            </div>
+            <div>
+                <p class="font-semibold text-gray-900 text-lg">
+                    <span id="postUsernameDisplay">Pengguna</span>
+                </p>
+                <div class="flex items-center text-sm text-gray-600 bg-gray-200 rounded-full px-3 py-1 mt-1">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0v4m-6 4h2m-2 4h2m6-4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-4a3 3 0 013-3h2.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012.414 14H18a2 2 0 002-2v-4a2 2 0 00-2-2h-3.586a1 1 0 01-.707-.293l-1.414-1.414A1 1 0 009.586 6H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2v-1"></path></svg>
+                    Publik
+                </div>
+            </div>
+        </div>
+
+        <form id="curhatForm" class="flex-grow flex flex-col">
+            <textarea name="text" rows="10" placeholder="Apa yang Anda pikirkan?" required
+              class="flex-grow text-xl p-0 border-none resize-none focus:ring-0 focus:border-transparent"
+            ></textarea>
+        </form>
+        
+    </div>
+
+    <!-- Footer Fitur Tambahan (Placeholder UI) -->
+    <div class="border-t border-gray-200 p-4">
+        <div class="space-y-4">
+            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
+                <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                Foto/Video
+            </div>
+            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
+                <svg class="w-6 h-6 mr-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Tambahkan lokasi
+            </div>
+            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
+                <svg class="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Perasaan/aktivitas
+            </div>
+        </div>
+    </div>
+  </div>
+
 </body>
 </html>
