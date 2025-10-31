@@ -601,6 +601,107 @@
         msgModal.style.display = 'flex';
     }
 
+<!-- === POPUP PERASAAN/AKTIVITAS === -->
+<div id="moodModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+  <div class="bg-gray-900 rounded-xl shadow-2xl w-80 md:w-96 p-4 relative">
+    <button id="closeMoodModal" class="absolute top-2 right-2 text-gray-400 hover:text-white">
+      ✖
+    </button>
+    <h2 class="text-xl font-bold text-yellow-300 mb-3 text-center">Pilih Perasaan / Aktivitas</h2>
+
+    <!-- Tab Menu -->
+    <div class="flex mb-3 border-b border-gray-700">
+      <button id="tab-feeling" class="flex-1 text-center py-2 font-semibold text-white border-b-2 border-yellow-400">Perasaan</button>
+      <button id="tab-activity" class="flex-1 text-center py-2 font-semibold text-gray-400 hover:text-white">Aktivitas</button>
+    </div>
+
+    <!-- List Perasaan -->
+    <div id="feelingList" class="grid grid-cols-2 gap-3">
+      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="feeling" data-text="senang">😊 Senang</button>
+      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="feeling" data-text="sedih">😢 Sedih</button>
+      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="feeling" data-text="dicintai">❤️ Dicintai</button>
+      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="feeling" data-text="malas">😴 Malas</button>
+    </div>
+
+    <!-- List Aktivitas -->
+    <div id="activityList" class="grid grid-cols-2 gap-3 hidden">
+      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="activity" data-text="menonton">🎬 Menonton</button>
+      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="activity" data-text="makan">🍜 Makan</button>
+      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="activity" data-text="mendengarkan musik">🎧 Musik</button>
+      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="activity" data-text="bermain game">🎮 Game</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // === LOGIKA MODAL PERASAAN/AKTIVITAS ===
+  const moodModal = document.getElementById('moodModal');
+  const closeMoodModal = document.getElementById('closeMoodModal');
+  const tabFeeling = document.getElementById('tab-feeling');
+  const tabActivity = document.getElementById('tab-activity');
+  const feelingList = document.getElementById('feelingList');
+  const activityList = document.getElementById('activityList');
+
+  // Tombol yang sudah ada (contoh: tombol Perasaan/Aktivitas)
+  const moodBtnTrigger = document.querySelector('#post-mood-btn, #mood-button, .btn-mood'); // fleksibel
+
+  // Buka modal saat tombol diklik
+  if (moodBtnTrigger) {
+    moodBtnTrigger.addEventListener('click', () => {
+      moodModal.classList.remove('hidden');
+      moodModal.classList.add('flex');
+    });
+  }
+
+  // Tutup modal
+  closeMoodModal.addEventListener('click', () => {
+    moodModal.classList.add('hidden');
+    moodModal.classList.remove('flex');
+  });
+
+  // Ganti tab
+  tabFeeling.addEventListener('click', () => {
+    tabFeeling.classList.add('text-white', 'border-yellow-400');
+    tabActivity.classList.remove('text-white', 'border-yellow-400');
+    tabActivity.classList.add('text-gray-400');
+    feelingList.classList.remove('hidden');
+    activityList.classList.add('hidden');
+  });
+
+  tabActivity.addEventListener('click', () => {
+    tabActivity.classList.add('text-white', 'border-yellow-400');
+    tabFeeling.classList.remove('text-white', 'border-yellow-400');
+    tabFeeling.classList.add('text-gray-400');
+    activityList.classList.remove('hidden');
+    feelingList.classList.add('hidden');
+  });
+
+  // Pilih perasaan / aktivitas
+  document.querySelectorAll('.mood-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.type;
+      const text = btn.dataset.text;
+      const icon = btn.textContent.split(' ')[0]; // ambil emoji
+
+      // Simpan ke localStorage (sementara)
+      localStorage.setItem('selectedMood', `${icon} ${type === 'feeling' ? 'merasa' : 'sedang'} ${text}`);
+
+      // Tutup modal
+      moodModal.classList.add('hidden');
+      moodModal.classList.remove('flex');
+
+      // Tambahkan ke postingan terakhir (contoh simulasi)
+      const postArea = document.querySelector('#post-feed, .post-container');
+      if (postArea) {
+        const moodText = localStorage.getItem('selectedMood');
+        const newPost = document.createElement('div');
+        newPost.className = 'game-content-panel p-4 mb-4 rounded-lg shadow-xl';
+        newPost.innerHTML = `<p class="text-gray-300 text-sm">${moodText}</p>`;
+        postArea.prepend(newPost);
+      }
+    });
+  });
+
   </script>
 </head>
 
