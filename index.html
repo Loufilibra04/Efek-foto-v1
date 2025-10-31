@@ -20,8 +20,8 @@
             'fb-gray': '#F0F2F5',
             'fb-dark': '#3A3B3C',
             'fb-dark-bg': '#18191A',
-            'chat-sent': '#0084FF', // (BARU) Warna chat biru
-            'chat-received': '#E4E6EB', // (BARU) Warna chat abu
+            'chat-sent': '#0084FF', 
+            'chat-received': '#E4E6EB', 
           },
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
@@ -36,10 +36,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    /* ... (CSS default Anda tetap di sini) ... */
+    /* ... CSS default Anda ... */
     body { 
       font-family: 'Inter', sans-serif; 
-      background-color: #F0F2F5; /* fb-gray */
+      background-color: #F0F2F5;
       transition: background-color 0.3s;
       min-height: 100vh;
       overflow-y: auto; 
@@ -71,8 +71,8 @@
       z-index:1000; 
     }
     
-    /* Modal Lokasi & Perasaan (Fullscreen) */
-    #locationModal, #feelingModal, #chatView { /* (BARU) Menambahkan chatView */
+    /* (PERUBAHAN) Menambahkan menuView & settingsView ke grup modal fullscreen */
+    #locationModal, #feelingModal, #chatView, #menuView, #settingsView {
         background: #fff;
         display: none; 
         position: fixed;
@@ -80,13 +80,16 @@
         flex-direction: column;
         align-items: stretch;
         justify-content: flex-start;
-        z-index: 2000; /* Lebih tinggi dari postView */
+        z-index: 2000; 
     }
     
-    /* (BARU) Pastikan chatView di atas postView, dll */
-    #chatView {
+    #chatView, #menuView, #settingsView {
         z-index: 3000; 
-        background-color: #FFFFFF; /* Latar belakang putih */
+        background-color: #F0F2F5; /* Latar belakang abu-abu seperti FB */
+    }
+    /* (BARU) Khusus header modal, agar latar belakang putih */
+    .modal-header {
+        background-color: #FFFFFF;
     }
 
     .post-card {
@@ -96,57 +99,26 @@
         margin-bottom: 12px;
     }
 
-    /* Styling Tab untuk Modal Perasaan */
     .feeling-tab.active {
-        border-color: #1877F2; /* fb-blue */
+        border-color: #1877F2;
         color: #1877F2;
     }
 
-    /* ============================================= */
-    /* (BARU) CSS UNTUK CHAT BUBBLES */
-    /* ============================================= */
+    /* ... CSS Chat Bubbles ... */
     #chatMessageList {
         display: flex;
         flex-direction: column;
         gap: 8px;
         padding: 12px;
+        background-color: #FFFFFF; /* Latar belakang chat putih */
     }
-    .chat-message-container {
-        display: flex;
-        flex-direction: column;
-    }
-    .chat-bubble {
-        max-width: 70%;
-        padding: 8px 12px;
-        border-radius: 18px;
-        word-wrap: break-word;
-        font-size: 15px;
-        line-height: 1.4;
-    }
-    .chat-sender-name {
-        font-size: 12px;
-        color: #65676B;
-        margin-left: 12px;
-        margin-bottom: 2px;
-    }
-
-    /* Pesan Diterima (Orang Lain) */
-    .chat-message-container.received {
-        align-items: flex-start;
-    }
-    .chat-bubble.received {
-        background-color: #E4E6EB; /* chat-received */
-        color: #050505;
-    }
-    
-    /* Pesan Terkirim (Anda) */
-    .chat-message-container.sent {
-        align-items: flex-end;
-    }
-    .chat-bubble.sent {
-        background-color: #0084FF; /* chat-sent */
-        color: white;
-    }
+    .chat-message-container { display: flex; flex-direction: column; }
+    .chat-bubble { max-width: 70%; padding: 8px 12px; border-radius: 18px; word-wrap: break-word; font-size: 15px; line-height: 1.4; }
+    .chat-sender-name { font-size: 12px; color: #65676B; margin-left: 12px; margin-bottom: 2px; }
+    .chat-message-container.received { align-items: flex-start; }
+    .chat-bubble.received { background-color: #E4E6EB; color: #050505; }
+    .chat-message-container.sent { align-items: flex-end; }
+    .chat-bubble.sent { background-color: #0084FF; color: white; }
   </style>
 
   <script type="module">
@@ -173,30 +145,21 @@
     const db = getFirestore(app);
 
     // --- State Aplikasi ---
-    let currentPage = 'Auth'; // Bisa 'Auth', 'Main', 'Post', atau 'Chat' (BARU)
+    let currentPage = 'Auth'; // Auth, Main, Post, Chat, Menu, Settings (BARU)
     let selectedLocation = null; 
     let selectedFeeling = null; 
     
-    // --- Data Lokasi Dummy ---
+    // --- Data Dummy ---
     const DUMMY_LOCATIONS = [
       { name: "Pantai Bahari Jeneponto", detail: "Jeneponto · Jeneponto, South Sulawesi" },
       { name: "Makassar", detail: "Kota Makassar, Sulawesi Selatan, ID" },
-      { name: "Nasara, Sulawesi Selatan, Indonesia", detail: "Nasara, South Sulawesi, ID" },
-      { name: "Bunia", detail: "Bunia, South Sulawesi, ID" },
-      { name: "Zona Nyaman", detail: "Kota Makassar, Sulawesi Selatan, ID" },
-      { name: "Kampung Beru Kec, bangkala Kab, jeneponto", detail: "Bangkala, South Sulawesi, ID" },
-      { name: "Desa Laikang", detail: "Jeneponto, South Sulawesi, ID" },
     ];
-    // --- Data Perasaan/Aktivitas Dummy ---
     const DUMMY_FEELINGS = [
       { emoji: "😊", text: "senang" }, { emoji: "😇", text: "terberkati" }, { emoji: "🥰", text: "dicintai" },
       { emoji: "😥", text: "sedih" }, { emoji: "😍", text: "penuh cinta" }, { emoji: "🙏", text: "bersyukur" },
-      { emoji: "🤩", text: "bersemangat" }, { emoji: "😘", text: "jatuh cinta" }, { emoji: "🤪", text: "gila" },
-      { emoji: "🥳", text: "penuh kegembiraan" }, { emoji: "🤩", text: "fantastis" },
     ];
     const DUMMY_ACTIVITIES = [
         { emoji: "🎉", text: "merayakan..." }, { emoji: "✈️", text: "bepergian ke..." }, { emoji: "☕", text: "minum kopi" },
-        { emoji: "📖", text: "membaca buku" }, { emoji: "🎧", text: "mendengarkan musik" }, { emoji: "🎮", text: "bermain game" },
     ];
 
 
@@ -230,13 +193,26 @@
     const feelingTabPerasaan = document.getElementById("feelingTabPerasaan");
     const feelingTabAktivitas = document.getElementById("feelingTabAktivitas");
 
-    // (BARU) Elemen Chat Global
+    // Elemen Chat Global
     const chatView = document.getElementById("chatView");
     const goToChatBtn = document.getElementById("goToChatBtn");
     const chatBackBtn = document.getElementById("chatBackBtn");
     const chatMessageList = document.getElementById("chatMessageList");
     const chatForm = document.getElementById("chatForm");
     const chatTextInput = document.getElementById("chatTextInput");
+
+    // (BARU) Elemen Menu & Pengaturan
+    const menuView = document.getElementById("menuView");
+    const settingsView = document.getElementById("settingsView");
+    const openMenuBtn = document.getElementById("openMenuBtn"); // Menggantikan logoutBtn
+    const menuBackBtn = document.getElementById("menuBackBtn");
+    const menuSettingsBtn = document.getElementById("menuSettingsBtn");
+    const menuLogoutBtn = document.getElementById("menuLogoutBtn");
+    const menuProfileName = document.getElementById("menuProfileName");
+    const settingsBackBtn = document.getElementById("settingsBackBtn");
+    const settingsForm = document.getElementById("settingsForm");
+    const settingsNameInput = document.getElementById("settingsNameInput");
+    const settingsProfileName = document.getElementById("settingsProfileName");
 
 
     // --- Fungsi Navigasi Halaman ---
@@ -247,7 +223,9 @@
       postView.style.display = 'none';
       locationModal.style.display = 'none'; 
       feelingModal.style.display = 'none'; 
-      chatView.style.display = 'none'; // (BARU) Sembunyikan chat view
+      chatView.style.display = 'none';
+      menuView.style.display = 'none'; // (BARU)
+      settingsView.style.display = 'none'; // (BARU)
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -257,13 +235,20 @@
         postView.style.display = 'flex';
         renderLocationBar(); 
         renderPostHeader(); 
-      } else if (page === 'Chat') { // (BARU) Navigasi ke Chat
+      } else if (page === 'Chat') { 
         chatView.style.display = 'flex';
+      } else if (page === 'Menu') { // (BARU)
+        menuView.style.display = 'flex';
+      } else if (page === 'Settings') { // (BARU)
+        settingsView.style.display = 'flex';
       }
     }
 
     // --- EVENT LISTENERS UI ---
-    document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+    
+    // (PERUBAHAN) Tombol Logout lama sekarang membuka Menu
+    openMenuBtn.addEventListener('click', () => navigateTo('Menu')); 
+    
     document.getElementById('goToPostBtn').addEventListener('click', () => {
         selectedLocation = null;
         selectedFeeling = null; 
@@ -279,9 +264,15 @@
       document.getElementById('loginCard').style.display = 'block';
     });
 
-    // (BARU) Navigasi Chat
+    // Navigasi Chat
     goToChatBtn.addEventListener('click', () => navigateTo('Chat'));
     chatBackBtn.addEventListener('click', () => navigateTo('Main'));
+    
+    // (BARU) Navigasi Menu & Pengaturan
+    menuBackBtn.addEventListener('click', () => navigateTo('Main'));
+    menuSettingsBtn.addEventListener('click', () => navigateTo('Settings'));
+    menuLogoutBtn.addEventListener('click', () => signOut(auth)); // Tombol logout baru
+    settingsBackBtn.addEventListener('click', () => navigateTo('Menu'));
 
 
     // --- Event Listener Lokasi ---
@@ -436,6 +427,28 @@
       }
     });
 
+    // (PERUBAHAN) Memisahkan fungsi update UI profil
+    function updateProfileUI(user) {
+        if (!user) return;
+        const displayName = user.displayName || user.email;
+        const avatarLetter = displayName[0] || '?';
+
+        // 1. Main View (Header)
+        userStatusDisplay.textContent = displayName; 
+        
+        // 2. Post View
+        renderPostHeader();
+        
+        // 3. (BARU) Menu View
+        menuProfileName.textContent = displayName;
+        // Di sini Anda bisa menambahkan logika untuk avatar di menu, dll.
+        
+        // 4. (BARU) Settings View
+        settingsProfileName.textContent = displayName;
+        settingsNameInput.value = displayName;
+    }
+
+    // Fungsi ini sekarang hanya menyimpan data
     async function saveProfileName(name) {
       const user = auth.currentUser;
       if (!user) return;
@@ -447,6 +460,7 @@
       });
     }
 
+    // Form Pendaftaran Awal (Hanya untuk pengguna baru)
     profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = profileNameInput.value.trim();
@@ -454,31 +468,48 @@
       try {
         await saveProfileName(name);
         profileModal.style.display = "none";
+        updateProfileUI(auth.currentUser); // Update UI setelah simpan
         navigateTo('Main');
       } catch (err) {
         console.error("Gagal simpan nama:", err);
         showModalMessage("Gagal simpan nama", err.message);
       }
     });
+    
+    // (BARU) Form Pengaturan (Untuk ganti nama)
+    settingsForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = settingsNameInput.value.trim();
+        if (!name) return showModalMessage("Perhatian", "Nama tidak boleh kosong");
+        
+        try {
+            await saveProfileName(name);
+            updateProfileUI(auth.currentUser); // Update UI setelah simpan
+            showModalMessage("Sukses", "Nama berhasil diperbarui!");
+            navigateTo('Menu'); // Kembali ke Menu
+        } catch (err) {
+            console.error("Gagal simpan nama:", err);
+            showModalMessage("Gagal simpan nama", err.message);
+        }
+    });
+
 
     let unsubscribeCurhatListener = null;
-    let unsubscribeChatListener = null; // (BARU) Listener untuk chat
+    let unsubscribeChatListener = null; 
 
     onAuthStateChanged(auth, async (user) => {
       if (unsubscribeCurhatListener) {
         unsubscribeCurhatListener();
         unsubscribeCurhatListener = null;
       }
-      // (BARU) Hentikan listener chat saat logout
       if (unsubscribeChatListener) {
         unsubscribeChatListener();
         unsubscribeChatListener = null;
       }
 
       if (user) {
-        const displayName = user.displayName || user.email;
-        userStatusDisplay.textContent = displayName; 
-        renderPostHeader(); 
+        // (PERUBAHAN) Panggil fungsi update UI terpusat
+        updateProfileUI(user); 
         
         if (!user.displayName) {
           profileModal.style.display = "flex";
@@ -490,7 +521,7 @@
         navigateTo('Main');
 
         unsubscribeCurhatListener = listenCurhatan();
-        unsubscribeChatListener = listenGlobalChat(); // (BARU) Mulai dengarkan chat
+        unsubscribeChatListener = listenGlobalChat(); 
       } else {
         userStatusDisplay.textContent = "Guest";
         navigateTo('Auth');
@@ -523,27 +554,20 @@
       }
     });
 
-    // --- (BARU) KIRIM PESAN CHAT GLOBAL (Firestore) ---
+    // --- KIRIM PESAN CHAT GLOBAL (Firestore) ---
     chatForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const text = chatTextInput.value.trim();
         if (!text) return;
-
         const user = auth.currentUser;
         if (!user) return showModalMessage("Kesalahan", "Harus login dulu");
         const userName = user.displayName || user.email;
-
         const messageData = {
-            text,
-            userId: user.uid,
-            userName,
-            createdAt: new Date()
+            text, userId: user.uid, userName, createdAt: new Date()
         };
-
         try {
             await addDoc(collection(db, "globalChat"), messageData);
             chatForm.reset();
-            // Optimistic scroll to bottom
             chatMessageList.scrollTop = chatMessageList.scrollHeight;
         } catch (err) {
             console.error("Gagal kirim pesan:", err);
@@ -690,26 +714,20 @@
       return unsub;
     }
 
-    // --- (BARU) LISTEN REAL-TIME CHAT GLOBAL ---
+    // --- LISTEN REAL-TIME CHAT GLOBAL ---
     function listenGlobalChat() {
-        // Ambil 50 pesan terakhir, urutkan dari yang terlama
         const q = query(collection(db, "globalChat"), orderBy("createdAt", "asc"), limitToLast(50));
-        
         const unsub = onSnapshot(q, (snapshot) => {
-            chatMessageList.innerHTML = ""; // Hapus semua pesan dan render ulang
-            
+            chatMessageList.innerHTML = ""; 
             if (snapshot.empty) {
                 chatMessageList.innerHTML = `<p class="text-center text-gray-500 mt-4">Belum ada pesan. Mulai obrolan!</p>`;
                 return;
             }
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 const isOwnMessage = auth.currentUser && data.userId === auth.currentUser.uid;
-                
                 const container = document.createElement('div');
                 container.className = 'chat-message-container';
-                
                 if (isOwnMessage) {
                     container.classList.add('sent');
                     container.innerHTML = `
@@ -728,8 +746,6 @@
                 }
                 chatMessageList.appendChild(container);
             });
-
-            // (PENTING) Auto-scroll ke pesan terbaru
             chatMessageList.scrollTop = chatMessageList.scrollHeight;
         }, (err) => {
             console.error("Listen chat error:", err);
@@ -741,10 +757,8 @@
     // --- Helper: Generate Dummy Posts ---
     function generateDummyPosts() {
         const dummyData = [
-            { name: "Sistem", text: "Curhatanmu akan muncul di sini. Coba buat postingan pertamamu!", time: "Sekarang", location: { name: "Jeneponto", detail: "Sulawesi Selatan" } },
-            { name: "Pengguna Anonim", text: "Halaman ini sudah bisa di-scroll ke bawah dan ke atas. Gulir terus untuk melihat postingan lama!", time: "1 jam lalu" },
-            { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "2 hari lalu", feeling: { emoji: '😊', text: 'senang', type: 'feeling'} },
-            { name: "Budi", text: "Semoga aplikasinya ramai ya! Saya senang dengan tampilan barunya. Sangat responsif di ponsel.", time: "2 hari lalu" },
+            { name: "Sistem", text: "Curhatanmu akan muncul di sini.", time: "Sekarang", location: { name: "Jeneponto", detail: "Sulawesi Selatan" } },
+            { name: "Admin", text: "Ini adalah postingan dummy.", time: "2 hari lalu", feeling: { emoji: '😊', text: 'senang', type: 'feeling'} },
         ];
         return dummyData.map(data => {
             const locationDisplay = data.location 
@@ -755,15 +769,7 @@
                 feelingDisplay = ` ${escapeHtml(data.feeling.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(data.feeling.text)}.</span>`;
             }
             const mapPlaceholder = data.location 
-              ? `
-                <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative opacity-50">
-                    <div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300">
-                        <div class="p-4">
-                            <svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
-                        </div>
-                    </div>
-                </div>
-            ` : '';
+              ? `<div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative opacity-50"><div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300"><div class="p-4"><svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg></div></div></div>` : '';
             return `
                 <div class="post-card mb-3 shadow-md opacity-80">
                     <div class="p-4">
@@ -889,8 +895,8 @@
       <div class="flex items-center justify-between max-w-xl mx-auto p-3">
         <h1 class="text-2xl font-extrabold text-fb-blue">CurhatApp</h1>
         <div class="flex items-center space-x-3">
-            <button id="logoutBtn" class="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition duration-150">
-                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            <button id="openMenuBtn" class="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition duration-150">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
             </button>
         </div>
       </div>
@@ -900,8 +906,6 @@
         <button id="goToChatBtn" class="p-3 hover:bg-gray-100 transition duration-150 w-full text-center">Pesan Global</button>
       </div>
     </nav>
-
-    
 
 <div class="max-w-xl mx-auto px-3 pt-3 pb-10"> 
         
@@ -936,7 +940,7 @@
 
 <div id="postView" class="hidden fixed inset-0 flex flex-col bg-white z-20">
     
-<header class="flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
+<header class="modal-header flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
         <button id="postFormBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
         </button>
@@ -945,8 +949,7 @@
             POSTING
         </button>
     </header>
-<div class="flex-grow p-4 overflow-y-auto">
-        <div class="flex items-center mb-6">
+<div class="flex-grow p-4 overflow-y-auto bg-white"> <div class="flex items-center mb-6">
             <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
                 <span id="postAvatarLetter" class="font-semibold text-white">?</span>
             </div>
@@ -960,7 +963,6 @@
                 </div>
             </div>
         </div>
-
         <form id="curhatForm" class="flex-grow flex flex-col">
             <textarea name="text" rows="10" placeholder="Apa yang Anda pikirkan?" required
               class="flex-grow text-xl p-0 border-none resize-none focus:ring-0 focus:border-transparent"
@@ -976,7 +978,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
     </div>
-<div class="border-t border-gray-200 p-4">
+<div class="border-t border-gray-200 p-4 bg-white">
         <div class="space-y-4">
             <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
                 <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -997,17 +999,15 @@
 
   
 
-<div id="locationModal" class="flex-col bg-white">
-      <header class="flex items-center justify-between p-4 border-b border-gray-200">
+<div id="locationModal" class="flex-col">
+      <header class="modal-header flex items-center justify-between p-4 border-b border-gray-200">
           <button id="locationModalBackBtn" class="text-gray-700 hover:text-gray-900 p-1">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           </button>
           <h2 class="text-xl font-bold text-gray-900">Tambahkan Lokasi Anda</h2>
-          <button class="text-fb-blue font-semibold p-1 opacity-0 pointer-events-none">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-          </button>
+          <div class="w-6"></div>
       </header>
-<div class="p-4 border-b border-gray-200">
+<div class="p-4 border-b border-gray-200 bg-white">
           <div class="flex items-center bg-gray-100 rounded-full p-2">
               <input id="locationSearchInput" type="text" placeholder="Cari"
                   class="flex-grow bg-transparent border-none focus:ring-0 focus:border-transparent p-0 text-lg"
@@ -1015,7 +1015,7 @@
               <svg class="w-6 h-6 text-gray-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
       </div>
-<div class="flex-grow overflow-y-auto">
+<div class="flex-grow overflow-y-auto bg-white">
           <h3 class="text-lg font-semibold text-gray-700 p-4 border-b border-gray-200">Saran</h3>
           <div id="locationList"></div>
       </div>
@@ -1023,17 +1023,15 @@
 
   
 
-<div id="feelingModal" class="flex-col bg-white">
-      <header class="flex items-center justify-between p-4 border-b border-gray-200">
+<div id="feelingModal" class="flex-col">
+      <header class="modal-header flex items-center justify-between p-4 border-b border-gray-200">
           <button id="feelingModalBackBtn" class="text-gray-700 hover:text-gray-900 p-1">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           </button>
           <h2 class="text-xl font-bold text-gray-900">Apa yang Anda rasakan?</h2>
-          <button class="text-fb-blue font-semibold p-1 opacity-0 pointer-events-none">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-          </button>
+          <div class="w-6"></div>
       </header>
-<div class="flex border-b border-gray-200">
+<div class="flex border-b border-gray-200 bg-white">
           <button id="feelingTabPerasaan" class="feeling-tab flex-1 p-4 font-semibold text-gray-600 border-b-2 border-transparent hover:bg-gray-50 active">
               Perasaan
           </button>
@@ -1041,7 +1039,7 @@
               Aktivitas
           </button>
       </div>
-<div class="p-4 border-b border-gray-200">
+<div class="p-4 border-b border-gray-200 bg-white">
           <div class="flex items-center bg-gray-100 rounded-full p-2">
               <input id="feelingSearchInput" type="text" placeholder="Cari..."
                   class="flex-grow bg-transparent border-none focus:ring-0 focus:border-transparent p-0 text-lg"
@@ -1049,13 +1047,16 @@
               <svg class="w-6 h-6 text-gray-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
       </div>
-<div class="flex-grow overflow-y-auto">
+<div class="flex-grow overflow-y-auto bg-white">
           <div id="feelingList"></div>
       </div>
   </div>
 
 
-  <div id="chatView" class="hidden"> <header class="flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
+  
+
+<div id="chatView" class="hidden"> 
+      <header class="modal-header flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
           <button id="chatBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           </button>
@@ -1065,8 +1066,7 @@
           </button>
       </header>
 
-      <div id="chatMessageList" class="flex-grow overflow-y-auto bg-white">
-          </div>
+      <div id="chatMessageList" class="flex-grow overflow-y-auto"></div>
 
       <footer class="p-3 border-t border-gray-200 bg-white">
           <form id="chatForm" class="flex items-center gap-2">
@@ -1078,6 +1078,72 @@
               </button>
           </form>
       </footer>
+  </div>
+
+
+  <div id="menuView" class="hidden"> 
+      <header class="modal-header flex items-center p-4 border-b border-gray-200 shadow-sm">
+          <button id="menuBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900 mx-auto">Menu</h2>
+          <div class="w-6"></div></header>
+
+      <div class="flex-grow overflow-y-auto p-4">
+          <div class="bg-white p-4 rounded-lg shadow-md mb-4 flex items-center">
+              <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-700 mr-4">
+                  </div>
+              <div>
+                  <h3 id="menuProfileName" class="text-xl font-bold text-gray-900">Nama Pengguna</h3>
+                  <p class="text-sm text-gray-600">Lihat profil Anda</p>
+              </div>
+          </div>
+          
+          <button id="menuSettingsBtn" class="w-full flex items-center bg-white p-4 rounded-lg shadow-md mb-4 text-left hover:bg-gray-50 transition duration-150">
+              <div class="p-2 bg-gray-200 rounded-full mr-4">
+                  <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </div>
+              <p class="text-lg font-semibold text-gray-800">Pengaturan</an>
+          </button>
+          
+          <button id="menuLogoutBtn" class="w-full flex items-center bg-white p-4 rounded-lg shadow-md text-left hover:bg-gray-50 transition duration-150">
+              <div class="p-2 bg-gray-200 rounded-full mr-4">
+                  <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+              </div>
+              <p class="text-lg font-semibold text-gray-800">Keluar</p>
+          </button>
+      </div>
+  </div>
+
+
+  <div id="settingsView" class="hidden"> 
+      <header class="modal-header flex items-center p-4 border-b border-gray-200 shadow-sm">
+          <button id="settingsBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900 mx-auto">Pengaturan Akun</h2>
+          <div class="w-6"></div></header>
+
+      <div class="flex-grow overflow-y-auto p-4">
+          <div class="flex flex-col items-center bg-white p-6 rounded-lg shadow-md mb-4">
+              <div class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-4xl font-bold text-gray-700 mb-4">
+                  </div>
+              <h3 id="settingsProfileName" class="text-2xl font-bold text-gray-900">Nama Pengguna</h3>
+              <p class="text-sm text-gray-600">CurhatApp</p>
+          </div>
+          
+          <form id="settingsForm" class="bg-white p-4 rounded-lg shadow-md">
+              <div class="mb-4">
+                  <label for="settingsNameInput" class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
+                  <input id="settingsNameInput" type="text" required 
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fb-blue focus:border-fb-blue"
+                  />
+              </div>
+              <button type="submit" class="w-full bg-fb-blue hover:bg-opacity-80 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+                  Simpan Perubahan
+              </button>
+          </form>
+      </div>
   </div>
 
 </body>
