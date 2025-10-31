@@ -1,278 +1,495 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tempat Curhat 💬</title>
-
-  <script type="module">
-    // --- Firebase SDK (CDN) ---
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
-      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc } 
-      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-    // --- CONFIG FIREBASE (pakai config kamu) ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyDqatY8EgkSDgOp799xdb1TqwdCwoda-7I",
-      authDomain: "curhatan-959ee.firebaseapp.com",
-      projectId: "curhatan-959ee",
-      storageBucket: "curhatan-959ee.appspot.com",
-      messagingSenderId: "111804283269",
-      appId: "1:111804283269:web:da799747d37787f2ae6cec",
-      measurementId: "G-4Q1V1J0800"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    // --- DOM ---
-    const loginForm = document.getElementById("loginForm");
-    const registerForm = document.getElementById("registerForm");
-    const curhatForm = document.getElementById("curhatForm");
-    const curhatList = document.getElementById("curhatList");
-    const userStatus = document.getElementById("userStatus");
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    const profileModal = document.getElementById("profileModal");
-    const profileForm = document.getElementById("profileForm");
-    const profileNameInput = document.getElementById("profileName");
-
-    // --- REGISTER ---
-    registerForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = e.target.email.value;
-      const pass = e.target.password.value;
-      try {
-        const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-        // Setelah register, langsung minta isi nama -> onAuthStateChanged akan handle modal
-        registerForm.reset();
-      } catch (err) {
-        alert("Gagal daftar: " + err.message);
-      }
-    });
-
-    // --- LOGIN ---
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = e.target.email.value;
-      const pass = e.target.password.value;
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        loginForm.reset();
-      } catch (err) {
-        alert("Gagal login: " + err.message);
-      }
-    });
-
-    // --- LOGOUT ---
-    logoutBtn.addEventListener("click", () => signOut(auth));
-
-    // --- SAVE PROFILE NAME (updateAuth + users collection) ---
-    async function saveProfileName(name) {
-      const user = auth.currentUser;
-      if (!user) return;
-      // update displayName di Firebase Auth
-      await updateProfile(user, { displayName: name });
-      // simpan juga di koleksi users agar bisa di-query nanti
-      await setDoc(doc(db, "users", user.uid), {
-        name,
-        email: user.email,
-        updatedAt: new Date()
-      });
-    }
-
-    profileForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = profileNameInput.value.trim();
-      if (!name) return alert("Nama tidak boleh kosong");
-      try {
-        await saveProfileName(name);
-        profileModal.style.display = "none";
-      } catch (err) {
-        alert("Gagal simpan nama: " + err.message);
-      }
-    });
-
-    // --- AUTH STATE ---
-    let unsubscribeCurhatListener = null;
-    onAuthStateChanged(auth, async (user) => {
-      // stop listener lama kalau ada
-      if (unsubscribeCurhatListener) {
-        unsubscribeCurhatListener();
-        unsubscribeCurhatListener = null;
-      }
-
-      if (user) {
-        // kalau displayName belum ada, minta user isi nama profil dulu
-        if (!user.displayName) {
-          profileModal.style.display = "block";
-          userStatus.textContent = `Login sebagai: ${user.email} (Isi nama profil dulu)`;
-          document.querySelector(".auth").style.display = "none";
-          document.querySelector(".main").style.display = "none";
-          return;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tempat Curhat 😔</title>
+    <!-- Font modern untuk tampilan yang bersih -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- Dark Mode and Global Styles --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000; /* Latar Belakang Hitam */
+            color: #e4e6eb; /* Teks Utama Putih Pucat */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh; /* Memastikan ketinggian penuh */
         }
 
-        // sudah punya displayName
-        userStatus.textContent = `Login sebagai: ${user.displayName}`;
-        document.querySelector(".auth").style.display = "none";
-        document.querySelector(".main").style.display = "block";
+        .container {
+            background-color: #18191a; /* Latar Belakang Konten Abu Gelap */
+            width: 100%;
+            max-width: 550px; /* Lebar lebih luas sedikit */
+            box-shadow: none;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-        // start listen curhatan real-time
-        unsubscribeCurhatListener = listenCurhatan();
-      } else {
-        userStatus.textContent = "Belum login";
-        document.querySelector(".auth").style.display = "block";
-        document.querySelector(".main").style.display = "none";
-        profileModal.style.display = "none";
-      }
-    });
+        /* --- Header (Mirip Navigasi Atas FB) --- */
+        .header {
+            background-color: #242526;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #3a3b3c;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
 
-    // --- POST CURHATAN ---
-    curhatForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = e.target.text.value.trim();
-      if (!text) return;
-      const user = auth.currentUser;
-      if (!user) return alert("Harus login dulu");
-      const userName = user.displayName || user.email;
-      try {
-        await addDoc(collection(db, "curhatan"), {
-          text,
-          userId: user.uid,
-          userName,
-          createdAt: new Date(),
-          comments: []
-        });
-        curhatForm.reset();
-      } catch (err) {
-        alert("Gagal posting: " + err.message);
-      }
-    });
+        .header h1 {
+            font-size: 26px;
+            color: #23a3ff; /* Aksen Biru Khas */
+            margin: 0;
+            font-weight: 700;
+        }
 
-    // --- LISTEN REAL-TIME CURHATAN ---
-    function listenCurhatan() {
-      const q = query(collection(db, "curhatan"), orderBy("createdAt", "desc"));
-      const unsub = onSnapshot(q, (snapshot) => {
-        curhatList.innerHTML = "";
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          const id = docSnap.id;
+        /* --- User Info & Buttons --- */
+        .user-panel {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-          // gunakan userName bila ada, kalau tidak fallback ke user/email
-          const displayName = data.userName || data.user || "Anon";
+        #userInfo {
+            font-size: 14px;
+            color: #b0b3b8;
+        }
 
-          const div = document.createElement("div");
-          div.className = "curhat";
-          div.innerHTML = `
-            <p><b>${escapeHtml(displayName)}</b>: ${escapeHtml(data.text)}</p>
-            <div class="comments">
-              ${(data.comments || []).map(c => `<p>💬 <b>${escapeHtml(c.userName || c.user)}</b>: ${escapeHtml(c.text)}</p>`).join("")}
-            </div>
-            <form class="commentForm">
-              <input type="text" placeholder="Tulis komentar..." required>
-              <button>Kirim</button>
-            </form>
-          `;
-          const form = div.querySelector(".commentForm");
-          form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const commentText = e.target[0].value.trim();
-            if (!commentText) return;
-            const user = auth.currentUser;
-            if (!user) return alert("Harus login dulu");
-            const commenterName = user.displayName || user.email;
-            try {
-              await updateDoc(doc(db, "curhatan", id), {
-                comments: arrayUnion({ userId: user.uid, userName: commenterName, text: commentText })
-              });
-              e.target.reset();
-            } catch (err) {
-              alert("Gagal kirim komentar: " + err.message);
-            }
-          });
-          curhatList.appendChild(div);
-        });
-      }, (err) => {
-        console.error("Listen curhatan error:", err);
-      });
-      return unsub;
-    }
+        button, .action-button {
+            background-color: #23a3ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s, transform 0.1s;
+        }
 
-    // --- Helper: escape untuk mencegah XSS sederhana ---
-    function escapeHtml(str) {
-      if (!str && str !== 0) return "";
-      return String(str)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
+        button:hover, .action-button:hover {
+            background-color: #1a8ffc;
+            transform: translateY(-1px);
+        }
+        
+        #logoutBtn {
+            background-color: #e74c3c;
+        }
+        #logoutBtn:hover {
+            background-color: #c0392b;
+        }
+        
+        #loginBtn {
+            background-color: #42b72a; /* Warna Hijau untuk Login */
+        }
+        #loginBtn:hover {
+            background-color: #3aa526;
+        }
 
-  </script>
+        /* --- Input Forms --- */
+        #postForm, #nameForm {
+            padding: 15px;
+            background-color: #242526;
+            margin-bottom: 8px;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+        
+        #postForm textarea {
+            background-color: #3a3b3c;
+            color: #e4e6eb;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 20px;
+            resize: none;
+            margin: 10px 0;
+            line-height: 1.4;
+        }
 
-  <style>
-    body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f2f2f2; padding: 20px; }
-    h1 { text-align: center; font-family: 'Baloo 2', cursive; font-size: 36px; }
-    .container { max-width: 700px; margin: auto; background: white; padding: 22px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
-    .curhat { background: #fafafa; padding: 12px; margin-top: 12px; border-radius: 10px; }
-    .comments { margin-left: 8px; font-size: 0.95em; color: #444; margin-top:8px; }
-    .commentForm { display: flex; gap: 8px; margin-top: 8px; }
-    input[type="text"], textarea { padding: 10px; border-radius: 8px; border: 1px solid #ddd; width: 100%; font-size: 15px; }
-    button { padding: 10px 14px; border-radius: 8px; border: none; background: #007bff; color: white; cursor: pointer; }
-    #logoutBtn { margin-top: 6px; background: #d9534f; padding: 8px 12px; border-radius: 8px; color: white; border: none; }
-    /* modal profile */
-    #profileModal { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:999; }
-    #profileModal .box { background:white; padding:20px; border-radius:10px; width:90%; max-width:420px; text-align:center; }
-    #profileModal input { margin-top:12px; }
-  </style>
+        #nameForm input {
+            background-color: #3a3b3c;
+            color: #e4e6eb;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 8px;
+            width: calc(100% - 30px);
+        }
+
+        #nameForm button {
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        /* --- Feed / Timeline Area --- */
+        #feed {
+            flex-grow: 1;
+            padding: 8px 15px;
+            overflow-y: auto;
+            /* Scrollbar styling for a cleaner look */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        #feed::-webkit-scrollbar {
+            display: none;
+        }
+
+        .post {
+            background-color: #242526;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+
+        .post-header {
+            font-size: 14px;
+            color: #b0b3b8;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #3a3b3c;
+            padding-bottom: 8px;
+        }
+
+        .post-header b {
+            font-size: 16px;
+            color: #e4e6eb;
+            font-weight: 700;
+        }
+
+        .post-body {
+            margin: 5px 0 15px 0;
+            white-space: pre-wrap; /* Mempertahankan format baris baru */
+        }
+
+        /* --- Comments --- */
+        .comments {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #3a3b3c;
+        }
+
+        .comment {
+            margin-left: 0;
+            background: #3a3b3c; /* Latar Belakang Komentar Lebih Gelap */
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .comment b {
+            color: #b0b3b8;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+
+        .commentForm {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .commentForm input {
+            flex-grow: 1;
+            padding: 8px 15px;
+            border-radius: 20px;
+            background-color: #3a3b3c;
+            color: #e4e6eb;
+            border: none;
+            margin: 0; /* Override default input margin */
+        }
+
+        .commentForm button {
+            width: auto;
+            padding: 8px 15px;
+            border-radius: 20px;
+            background-color: #23a3ff;
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        /* Custom Message Box (To replace alert()) */
+        .message-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            background-color: #42b72a;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 1000;
+            font-size: 14px;
+        }
+        .message-box.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
 </head>
-
 <body>
-  <div class="container">
-    <h1>Tempat Curhat 💬</h1>
-    <p id="userStatus">Belum login</p>
-    <button id="logoutBtn">Logout</button>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>Curhat 😔</h1>
+            <div class="user-panel">
+                <span id="userInfo">Kamu belum login.</span>
+                <button id="loginBtn" class="action-button">Login</button>
+                <button id="logoutBtn" class="action-button" style="display:none;">Logout</button>
+            </div>
+        </div>
 
-    <div class="auth">
-      <h3>Login</h3>
-      <form id="loginForm">
-        <input type="email" name="email" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <button>Login</button>
-      </form>
+        <!-- NAME AND POST FORMS -->
+        <div id="nameForm" style="display: none; padding: 15px;">
+            <div style="color: #b0b3b8; margin-bottom: 10px;">Atur Nama Tampilan:</div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input id="nameInput" type="text" placeholder="Masukkan nama panggilan..." style="margin-top: 0; flex-grow: 1;"/>
+                <button id="setNameBtn" class="action-button" style="width: 120px; margin-top: 0;">Simpan Nama</button>
+            </div>
+        </div>
 
-      <h3>Daftar</h3>
-      <form id="registerForm">
-        <input type="email" name="email" placeholder="Email baru" required>
-        <input type="password" name="password" placeholder="Password baru" required>
-        <button>Daftar</button>
-      </form>
+        <form id="postForm">
+            <textarea id="postInput" placeholder="Tulis curhatanmu di sini..." required rows="3"></textarea>
+            <button type="submit" class="action-button">Posting Curhatan</button>
+        </form>
+
+        <!-- FEED TIMELINE -->
+        <div id="feed"></div>
     </div>
+    
+    <!-- Custom Message Box to replace alert() -->
+    <div id="messageBox" class="message-box"></div>
 
-    <div class="main" style="display:none;">
-      <form id="curhatForm">
-        <textarea name="text" rows="4" placeholder="Tulis curhatanmu di sini..." required></textarea>
-        <button>Posting Curhatan</button>
-      </form>
-      <div id="curhatList"></div>
-    </div>
-  </div>
+    <script type="module">
+        // --- FIXES UNTUK KOMPATIBILITAS CANVAS (TIDAK MENGUBAH LOGIKA ANDA) ---
+        // Variabel global MANDATORI dari Canvas (Harus digunakan untuk mengganti konfigurasi hardcoded)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Import Firebase (Menggunakan versi 11.6.1 yang kompatibel dengan Canvas)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile, signInWithCustomToken, signInAnonymously } 
+            from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, arrayUnion, setLogLevel } 
+            from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  <!-- Modal untuk set nama -->
-  <div id="profileModal">
-    <div class="box">
-      <h3>Selamat datang! 👋</h3>
-      <p>Isi nama profil dulu biar email-mu gak keliatan di feed.</p>
-      <form id="profileForm">
-        <input id="profileName" type="text" placeholder="Nama yang mau ditampilkan" required />
-        <br/>
-        <button type="submit">Simpan Nama</button>
-      </form>
-    </div>
-  </div>
+        setLogLevel('Debug');
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        const db = getFirestore(app);
+
+        // Path Collection Firestore (Menggunakan jalur publik yang benar untuk aplikasi sosial)
+        const getCollectionRef = () => collection(db, `artifacts/${appId}/public/data/Curhatan`);
+
+        // Utility untuk mengganti alert()
+        function showMessage(text, duration = 3000) {
+            const box = document.getElementById('messageBox');
+            box.textContent = text;
+            box.classList.add('show');
+            setTimeout(() => {
+                box.classList.remove('show');
+            }, duration);
+        }
+
+        // --- Variabel dan Elemen HTML Asli ---
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userInfo = document.getElementById('userInfo');
+        const feed = document.getElementById('feed');
+        const postForm = document.getElementById('postForm');
+        const postInput = document.getElementById('postInput');
+        const nameInput = document.getElementById('nameInput');
+        const setNameBtn = document.getElementById('setNameBtn');
+        const nameForm = document.getElementById('nameForm');
+
+        let currentUser = null;
+
+        // --- MANDATORY INITIAL AUTH ---
+        async function initAuth() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Error during initial authentication:", error);
+            }
+        }
+        initAuth();
+
+        // Login (Dipertahankan seperti kode asli, meskipun mungkin diblokir di iframe)
+        loginBtn.onclick = async () => {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Error signing in with Google:", error);
+                showMessage("Login Google gagal. Coba lagi.", 4000);
+            }
+        };
+
+        // Logout (Dipertahankan)
+        logoutBtn.onclick = async () => {
+            await signOut(auth);
+            showMessage("Berhasil keluar.", 3000);
+        };
+
+        // Pantau status login (Dipertahankan)
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                const displayName = user.displayName || user.email || `Anonim-${user.uid.substring(0, 6)}`;
+                
+                userInfo.innerHTML = `Masuk sebagai: <b>${displayName}</b>`;
+                loginBtn.style.display = "none";
+                logoutBtn.style.display = "block";
+
+                // Menampilkan/Menyembunyikan form nama
+                if (!user.displayName || user.displayName.startsWith('Anonim-')) {
+                    nameForm.style.display = "block";
+                } else {
+                    nameForm.style.display = "none";
+                }
+
+                loadPosts();
+            } else {
+                userInfo.innerHTML = "Kamu belum login.";
+                loginBtn.style.display = "block";
+                logoutBtn.style.display = "none";
+                nameForm.style.display = "none";
+                feed.innerHTML = "";
+            }
+        });
+
+        // Ganti nama setelah login (Dipertahankan, alert() diganti showMessage())
+        setNameBtn.onclick = async () => {
+            const name = nameInput.value.trim();
+            if (name && currentUser) {
+                await updateProfile(currentUser, { displayName: name });
+                showMessage("Nama berhasil diset!", 3000); // DIGANTI DARI alert()
+                nameForm.style.display = "none";
+                userInfo.innerHTML = `Masuk sebagai: <b>${name}</b>`;
+            }
+        };
+
+        // Posting curhatan (Dipertahankan, menggunakan getCollectionRef() yang sudah diperbaiki)
+        postForm.onsubmit = async (e) => {
+            e.preventDefault();
+            if (!currentUser) {
+                showMessage("Silakan login atau tunggu otentikasi selesai.", 3000);
+                return;
+            }
+            
+            const text = postInput.value.trim();
+            if (!text) return;
+
+            const name = currentUser.displayName || currentUser.email || `Anonim-${currentUser.uid.substring(0, 6)}`;
+
+            try {
+                await addDoc(getCollectionRef(), {
+                    name: name,
+                    text,
+                    comments: [],
+                    timestamp: new Date()
+                });
+                postInput.value = "";
+                showMessage("Curhatan berhasil diposting!", 3000);
+            } catch (e) {
+                console.error("Gagal posting curhatan:", e);
+                showMessage("Gagal memposting curhatan. Coba lagi.", 4000);
+            }
+        };
+
+        // Menampilkan curhatan (real-time, Dipertahankan)
+        function loadPosts() {
+            if (!currentUser) return;
+
+            const q = query(getCollectionRef(), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snapshot) => {
+                feed.innerHTML = "";
+                snapshot.forEach((docSnap) => {
+                    const post = docSnap.data();
+                    const docId = docSnap.id;
+                    const postAuthor = post.name || "Anonim";
+                    
+                    // Format waktu
+                    const formattedTime = post.timestamp ? 
+                        new Date(post.timestamp.toDate()).toLocaleString('id-ID', {
+                            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                        }) : 'Waktu tidak diketahui';
+                        
+                    const postElement = document.createElement("div");
+                    postElement.classList.add("post");
+
+                    let commentsHTML = "";
+                    if (post.comments && post.comments.length > 0) {
+                        post.comments.forEach(c => {
+                            const commentAuthor = c.user || "Anonim";
+                            commentsHTML += `<div class="comment"><b>${commentAuthor}</b>: ${c.text}</div>`;
+                        });
+                    }
+
+                    postElement.innerHTML = `
+                        <div class="post-header">
+                            <b>${postAuthor}</b> <span style="font-weight: 400; font-size: 12px;">\u2022 ${formattedTime}</span>
+                        </div>
+                        <div class="post-body">${post.text}</div>
+                        <div class="comments">${commentsHTML}</div>
+                        
+                        <form class="commentForm">
+                            <input type="text" placeholder="Tulis komentar..." />
+                            <button type="submit">Kirim</button>
+                        </form>
+                    `;
+
+                    // Attach Comment Handler
+                    const commentForm = postElement.querySelector('.commentForm');
+                    const commentInput = commentForm.querySelector('input');
+                    commentForm.onsubmit = async (e) => {
+                        e.preventDefault();
+                        if (!currentUser) {
+                            showMessage("Anda harus login untuk berkomentar.", 3000);
+                            return;
+                        }
+
+                        const comment = commentInput.value.trim();
+                        if (!comment) return;
+
+                        const name = currentUser.displayName || currentUser.email || `Anonim-${currentUser.uid.substring(0, 6)}`;
+                        
+                        const ref = doc(db, `artifacts/${appId}/public/data/Curhatan`, docId);
+                        try {
+                            await updateDoc(ref, {
+                                comments: arrayUnion({
+                                    user: name,
+                                    text: comment
+                                })
+                            });
+                            commentInput.value = "";
+                        } catch (e) {
+                            console.error("Gagal menambahkan komentar:", e);
+                            showMessage("Gagal mengirim komentar. Coba lagi.", 4000);
+                        }
+                    };
+
+                    feed.appendChild(postElement);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
