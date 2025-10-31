@@ -1,244 +1,278 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Tempat Curhat</title>
-<style>
-  body {
-    font-family: 'Poppins', sans-serif;
-    background-color: #18191a;
-    color: #e4e6eb;
-    margin: 0;
-    padding: 0;
-  }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tempat Curhat 💬</title>
 
-  .navbar {
-    background-color: #242526;
-    padding: 15px;
-    text-align: center;
-    font-size: 22px;
-    font-weight: bold;
-    border-bottom: 1px solid #3a3b3c;
-  }
+  <script type="module">
+    // --- Firebase SDK (CDN) ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-  .container {
-    max-width: 500px;
-    margin: 20px auto;
-    background-color: #242526;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 5px #000;
-  }
+    // --- CONFIG FIREBASE (pakai config kamu) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDqatY8EgkSDgOp799xdb1TqwdCwoda-7I",
+      authDomain: "curhatan-959ee.firebaseapp.com",
+      projectId: "curhatan-959ee",
+      storageBucket: "curhatan-959ee.appspot.com",
+      messagingSenderId: "111804283269",
+      appId: "1:111804283269:web:da799747d37787f2ae6cec",
+      measurementId: "G-4Q1V1J0800"
+    };
 
-  textarea {
-    width: 100%;
-    height: 70px;
-    border-radius: 8px;
-    border: none;
-    padding: 10px;
-    font-size: 14px;
-    resize: none;
-    margin-bottom: 10px;
-    background: #3a3b3c;
-    color: white;
-  }
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-  button {
-    padding: 10px 16px;
-    border: none;
-    border-radius: 6px;
-    background-color: #2374e1;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-  }
+    // --- DOM ---
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const curhatForm = document.getElementById("curhatForm");
+    const curhatList = document.getElementById("curhatList");
+    const userStatus = document.getElementById("userStatus");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-  button:hover {
-    background-color: #166fe5;
-  }
+    const profileModal = document.getElementById("profileModal");
+    const profileForm = document.getElementById("profileForm");
+    const profileNameInput = document.getElementById("profileName");
 
-  .logout-btn {
-    background-color: #d93025;
-  }
-
-  .logout-btn:hover {
-    background-color: #b71c1c;
-  }
-
-  .post {
-    background-color: #3a3b3c;
-    padding: 15px;
-    border-radius: 10px;
-    margin-top: 15px;
-  }
-
-  .post-header {
-    font-weight: bold;
-    color: #e4e6eb;
-    margin-bottom: 5px;
-  }
-
-  .comment-section {
-    margin-top: 10px;
-  }
-
-  .comment {
-    background: #4e4f50;
-    border-radius: 6px;
-    padding: 6px;
-    margin-top: 5px;
-    font-size: 13px;
-  }
-
-  input.comment-input {
-    width: 80%;
-    border-radius: 6px;
-    border: none;
-    padding: 8px;
-    margin-right: 5px;
-    background: #3a3b3c;
-    color: white;
-  }
-
-  #feed {
-    max-height: 70vh;
-    overflow-y: auto;
-  }
-
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background-color: #4e4f50;
-    border-radius: 10px;
-  }
-</style>
-</head>
-<body>
-
-<div class="navbar">Tempat Curhat 💬</div>
-
-<div class="container" id="login-container">
-  <h3>Login untuk mulai curhat 😌</h3>
-  <input type="email" id="email" placeholder="Email" style="width:100%;padding:8px;margin-bottom:8px;border:none;border-radius:5px;">
-  <input type="password" id="password" placeholder="Password" style="width:100%;padding:8px;margin-bottom:8px;border:none;border-radius:5px;">
-  <input type="text" id="displayName" placeholder="Nama Tampilan (misal: Juan Sryn'x)" style="width:100%;padding:8px;margin-bottom:10px;border:none;border-radius:5px;">
-  <button id="registerBtn">Daftar</button>
-  <button id="loginBtn">Login</button>
-</div>
-
-<div class="container" id="main-container" style="display:none;">
-  <p>Login sebagai: <span id="username"></span></p>
-  <button class="logout-btn" id="logoutBtn">Logout</button>
-
-  <textarea id="curhatInput" placeholder="Tulis curhatanmu di sini..."></textarea>
-  <button id="postBtn">Posting Curhatan</button>
-
-  <div id="feed"></div>
-</div>
-
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyDqatY8EgkSDgOp799xdb1TqwdCwoda-7I",
-    authDomain: "curhatan-959ee.firebaseapp.com",
-    projectId: "curhatan-959ee",
-    storageBucket: "curhatan-959ee.firebasestorage.app",
-    messagingSenderId: "111804283269",
-    appId: "1:111804283269:web:da799747d37787f2ae6cec"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-
-  const loginContainer = document.getElementById("login-container");
-  const mainContainer = document.getElementById("main-container");
-  const usernameEl = document.getElementById("username");
-  const feed = document.getElementById("feed");
-
-  // Daftar akun baru
-  document.getElementById("registerBtn").onclick = async () => {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const displayName = document.getElementById("displayName").value;
-    if (!email || !password || !displayName) return alert("Isi semua kolom dulu ya!");
-
-    const userCred = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(userCred.user, { displayName });
-    alert("Akun berhasil dibuat! Sekarang login deh 😄");
-  };
-
-  // Login
-  document.getElementById("loginBtn").onclick = async () => {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    await signInWithEmailAndPassword(auth, email, password);
-  };
-
-  // Logout
-  document.getElementById("logoutBtn").onclick = () => signOut(auth);
-
-  // Post curhatan
-  document.getElementById("postBtn").onclick = async () => {
-    const text = document.getElementById("curhatInput").value.trim();
-    if (!text) return;
-    const user = auth.currentUser;
-    await addDoc(collection(db, "Curhatan"), {
-      text,
-      user: user.displayName || "Anonim",
-      timestamp: serverTimestamp(),
-      comments: []
+    // --- REGISTER ---
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const pass = e.target.password.value;
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+        // Setelah register, langsung minta isi nama -> onAuthStateChanged akan handle modal
+        registerForm.reset();
+      } catch (err) {
+        alert("Gagal daftar: " + err.message);
+      }
     });
-    document.getElementById("curhatInput").value = "";
-  };
 
-  // Tampilkan data real-time
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      loginContainer.style.display = "none";
-      mainContainer.style.display = "block";
-      usernameEl.textContent = user.displayName || "Anonim";
-      const q = query(collection(db, "Curhatan"), orderBy("timestamp", "desc"));
-      onSnapshot(q, (snapshot) => {
-        feed.innerHTML = "";
-        snapshot.forEach((docu) => {
-          const data = docu.data();
-          const postDiv = document.createElement("div");
-          postDiv.className = "post";
-          postDiv.innerHTML = `
-            <div class="post-header">${data.user}</div>
-            <div>${data.text}</div>
-            <div class="comment-section" id="comments-${docu.id}">
-              ${data.comments?.map(c => `<div class="comment">${c.user}: ${c.text}</div>`).join("") || ""}
-              <input class="comment-input" id="input-${docu.id}" placeholder="Tulis komentar...">
-              <button onclick="addComment('${docu.id}')">Kirim</button>
-            </div>
-          `;
-          feed.appendChild(postDiv);
-        });
+    // --- LOGIN ---
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const pass = e.target.password.value;
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        loginForm.reset();
+      } catch (err) {
+        alert("Gagal login: " + err.message);
+      }
+    });
+
+    // --- LOGOUT ---
+    logoutBtn.addEventListener("click", () => signOut(auth));
+
+    // --- SAVE PROFILE NAME (updateAuth + users collection) ---
+    async function saveProfileName(name) {
+      const user = auth.currentUser;
+      if (!user) return;
+      // update displayName di Firebase Auth
+      await updateProfile(user, { displayName: name });
+      // simpan juga di koleksi users agar bisa di-query nanti
+      await setDoc(doc(db, "users", user.uid), {
+        name,
+        email: user.email,
+        updatedAt: new Date()
       });
-    } else {
-      loginContainer.style.display = "block";
-      mainContainer.style.display = "none";
     }
-  });
 
-  window.addComment = async (postId) => {
-    const input = document.getElementById(`input-${postId}`);
-    const text = input.value.trim();
-    if (!text) return;
-    const user = auth.currentUser;
-    const postRef = doc(db, "Curhatan", postId);
-    await updateDoc(postRef, {
-      comments: arrayUnion({ user: user.displayName || "Anonim", text })
+    profileForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = profileNameInput.value.trim();
+      if (!name) return alert("Nama tidak boleh kosong");
+      try {
+        await saveProfileName(name);
+        profileModal.style.display = "none";
+      } catch (err) {
+        alert("Gagal simpan nama: " + err.message);
+      }
     });
-    input.value = "";
-  };
-</script>
+
+    // --- AUTH STATE ---
+    let unsubscribeCurhatListener = null;
+    onAuthStateChanged(auth, async (user) => {
+      // stop listener lama kalau ada
+      if (unsubscribeCurhatListener) {
+        unsubscribeCurhatListener();
+        unsubscribeCurhatListener = null;
+      }
+
+      if (user) {
+        // kalau displayName belum ada, minta user isi nama profil dulu
+        if (!user.displayName) {
+          profileModal.style.display = "block";
+          userStatus.textContent = `Login sebagai: ${user.email} (Isi nama profil dulu)`;
+          document.querySelector(".auth").style.display = "none";
+          document.querySelector(".main").style.display = "none";
+          return;
+        }
+
+        // sudah punya displayName
+        userStatus.textContent = `Login sebagai: ${user.displayName}`;
+        document.querySelector(".auth").style.display = "none";
+        document.querySelector(".main").style.display = "block";
+
+        // start listen curhatan real-time
+        unsubscribeCurhatListener = listenCurhatan();
+      } else {
+        userStatus.textContent = "Belum login";
+        document.querySelector(".auth").style.display = "block";
+        document.querySelector(".main").style.display = "none";
+        profileModal.style.display = "none";
+      }
+    });
+
+    // --- POST CURHATAN ---
+    curhatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = e.target.text.value.trim();
+      if (!text) return;
+      const user = auth.currentUser;
+      if (!user) return alert("Harus login dulu");
+      const userName = user.displayName || user.email;
+      try {
+        await addDoc(collection(db, "curhatan"), {
+          text,
+          userId: user.uid,
+          userName,
+          createdAt: new Date(),
+          comments: []
+        });
+        curhatForm.reset();
+      } catch (err) {
+        alert("Gagal posting: " + err.message);
+      }
+    });
+
+    // --- LISTEN REAL-TIME CURHATAN ---
+    function listenCurhatan() {
+      const q = query(collection(db, "curhatan"), orderBy("createdAt", "desc"));
+      const unsub = onSnapshot(q, (snapshot) => {
+        curhatList.innerHTML = "";
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+
+          // gunakan userName bila ada, kalau tidak fallback ke user/email
+          const displayName = data.userName || data.user || "Anon";
+
+          const div = document.createElement("div");
+          div.className = "curhat";
+          div.innerHTML = `
+            <p><b>${escapeHtml(displayName)}</b>: ${escapeHtml(data.text)}</p>
+            <div class="comments">
+              ${(data.comments || []).map(c => `<p>💬 <b>${escapeHtml(c.userName || c.user)}</b>: ${escapeHtml(c.text)}</p>`).join("")}
+            </div>
+            <form class="commentForm">
+              <input type="text" placeholder="Tulis komentar..." required>
+              <button>Kirim</button>
+            </form>
+          `;
+          const form = div.querySelector(".commentForm");
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const commentText = e.target[0].value.trim();
+            if (!commentText) return;
+            const user = auth.currentUser;
+            if (!user) return alert("Harus login dulu");
+            const commenterName = user.displayName || user.email;
+            try {
+              await updateDoc(doc(db, "curhatan", id), {
+                comments: arrayUnion({ userId: user.uid, userName: commenterName, text: commentText })
+              });
+              e.target.reset();
+            } catch (err) {
+              alert("Gagal kirim komentar: " + err.message);
+            }
+          });
+          curhatList.appendChild(div);
+        });
+      }, (err) => {
+        console.error("Listen curhatan error:", err);
+      });
+      return unsub;
+    }
+
+    // --- Helper: escape untuk mencegah XSS sederhana ---
+    function escapeHtml(str) {
+      if (!str && str !== 0) return "";
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+  </script>
+
+  <style>
+    body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f2f2f2; padding: 20px; }
+    h1 { text-align: center; font-family: 'Baloo 2', cursive; font-size: 36px; }
+    .container { max-width: 700px; margin: auto; background: white; padding: 22px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+    .curhat { background: #fafafa; padding: 12px; margin-top: 12px; border-radius: 10px; }
+    .comments { margin-left: 8px; font-size: 0.95em; color: #444; margin-top:8px; }
+    .commentForm { display: flex; gap: 8px; margin-top: 8px; }
+    input[type="text"], textarea { padding: 10px; border-radius: 8px; border: 1px solid #ddd; width: 100%; font-size: 15px; }
+    button { padding: 10px 14px; border-radius: 8px; border: none; background: #007bff; color: white; cursor: pointer; }
+    #logoutBtn { margin-top: 6px; background: #d9534f; padding: 8px 12px; border-radius: 8px; color: white; border: none; }
+    /* modal profile */
+    #profileModal { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:999; }
+    #profileModal .box { background:white; padding:20px; border-radius:10px; width:90%; max-width:420px; text-align:center; }
+    #profileModal input { margin-top:12px; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Tempat Curhat 💬</h1>
+    <p id="userStatus">Belum login</p>
+    <button id="logoutBtn">Logout</button>
+
+    <div class="auth">
+      <h3>Login</h3>
+      <form id="loginForm">
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button>Login</button>
+      </form>
+
+      <h3>Daftar</h3>
+      <form id="registerForm">
+        <input type="email" name="email" placeholder="Email baru" required>
+        <input type="password" name="password" placeholder="Password baru" required>
+        <button>Daftar</button>
+      </form>
+    </div>
+
+    <div class="main" style="display:none;">
+      <form id="curhatForm">
+        <textarea name="text" rows="4" placeholder="Tulis curhatanmu di sini..." required></textarea>
+        <button>Posting Curhatan</button>
+      </form>
+      <div id="curhatList"></div>
+    </div>
+  </div>
+
+  <!-- Modal untuk set nama -->
+  <div id="profileModal">
+    <div class="box">
+      <h3>Selamat datang! 👋</h3>
+      <p>Isi nama profil dulu biar email-mu gak keliatan di feed.</p>
+      <form id="profileForm">
+        <input id="profileName" type="text" placeholder="Nama yang mau ditampilkan" required />
+        <br/>
+        <button type="submit">Simpan Nama</button>
+      </form>
+    </div>
+  </div>
 </body>
 </html>
