@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tempat Curhat 💬</title>
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS CDN --><script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Konfigurasi Tailwind untuk Font Inter dan warna Facebook (Biru) -->
-  <script>
+  <!-- Konfigurasi Tailwind untuk Font Inter dan warna Facebook (Biru) --><script>
     tailwind.config = {
       theme: {
         extend: {
@@ -27,8 +25,7 @@
     }
   </script>
 
-  <!-- Google Font: Inter (Font Modern) -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Google Font: Inter (Font Modern) --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <style>
     /* Mengatur body default agar sesuai dengan mode terang (light mode) */
@@ -278,10 +275,14 @@
         // Jika tidak ada data, tampilkan dummy post agar bisa di-scroll
         if (snapshot.empty) {
              curhatList.innerHTML = `
-                <p class="text-center text-gray-500 mt-10 mb-4">Belum ada curhatan. Ayo buat yang pertama!</p>
+                <p class="text-center text-gray-500 mt-10 mb-4">Belum ada curhatan. Ayo buat postingan pertamamu!</p>
                 ${generateDummyPosts()}
             `;
+            // Pastikan curhatList juga memiliki padding bawah untuk dummy posts
+            curhatList.classList.add('pb-10');
             return;
+        } else {
+            curhatList.classList.remove('pb-10'); // Hapus jika sudah ada postingan asli
         }
 
         snapshot.forEach((docSnap) => {
@@ -296,8 +297,7 @@
           div.className = "post-card mb-3 shadow-md"; // Class kartu posting
           div.innerHTML = `
             <div class="p-4">
-                <!-- Header Post -->
-                <div class="flex items-center mb-3">
+                <!-- Header Post --><div class="flex items-center mb-3">
                     <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${displayName[0]}</div>
                     <div class="flex-grow">
                         <p class="font-semibold text-gray-900">${escapeHtml(displayName)}</p>
@@ -306,11 +306,9 @@
                     ${isOwnPost ? '<div class="text-xs text-fb-blue">Anda</div>' : ''}
                 </div>
 
-                <!-- Konten Curhatan -->
-                <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
+                <!-- Konten Curhatan --><p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
 
-                <!-- Aksi (Like/Comment - Placeholder UI) -->
-                <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
+                <!-- Aksi (Like/Comment - Placeholder UI) --><div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
                     <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
                         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
                         Suka
@@ -326,8 +324,7 @@
                 </div>
             </div>
 
-            <!-- Area Komentar Tersembunyi -->
-            <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
+            <!-- Area Komentar Tersembunyi --><div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
                 <div class="comments space-y-3 mb-4">
                   ${(data.comments || []).map(c => `
                     <div class="flex items-start">
@@ -397,7 +394,9 @@
             { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "1 hari lalu" },
             { name: "Budi", text: "Semoga aplikasinya ramai ya! Saya senang dengan tampilan barunya. Sangat responsif di ponsel.", time: "2 hari lalu" },
             { name: "Dewi", text: "Hari ini cuaca cerah sekali, mood jadi bagus! ✨", time: "3 hari lalu" },
-            { name: "Placeholder", text: "Curhatan ke-6: Apakah saya sudah bisa melihat scroll bar? Ya, sudah! 👍", time: "4 hari lalu" }
+            { name: "Placeholder", text: "Curhatan ke-6: Apakah saya sudah bisa melihat scroll bar? Ya, sudah! 👍", time: "4 hari lalu" },
+            { name: "Tes Scroll", text: "Coba lagi gulir ke bawah. Apakah ada konten tambahan? Tentu!", time: "5 hari lalu" },
+            { name: "Scroll Test", text: "Ini adalah postingan terakhir untuk menguji kemampuan gulir. Semoga berfungsi dengan baik!", time: "6 hari lalu" }
         ];
 
         return dummyData.map(data => `
@@ -449,8 +448,7 @@
 
 <body>
   
-  <!-- MODAL PESAN (PENGGANTI ALERT) -->
-  <div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[2000]">
+  <!-- MODAL PESAN (PENGGANTI ALERT) --><div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[2000]">
       <div class="bg-white p-6 rounded-xl shadow-2xl w-11/12 max-w-xs text-center">
           <h4 id="messageTitle" class="text-xl font-bold mb-3 text-red-600">Pesan</h4>
           <p id="messageContent" class="text-gray-700 mb-4"></p>
@@ -458,8 +456,7 @@
       </div>
   </div>
 
-  <!-- MODAL UNTUK SET NAMA (Wajib diisi setelah daftar/login pertama) -->
-  <div id="profileModal" class="hidden">
+  <!-- MODAL UNTUK SET NAMA (Wajib diisi setelah daftar/login pertama) --><div id="profileModal" class="hidden">
     <div class="box bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm text-center">
       <h3 class="text-2xl font-extrabold text-fb-blue mb-2">Selamat datang! 👋</h3>
       <p class="text-gray-600 mb-6">Tolong isi nama profil yang ingin kamu gunakan.</p>
@@ -475,16 +472,13 @@
   </div>
 
 
-  <!-- 1. AUTH VIEW (LOGIN / DAFTAR) -->
-  <div id="authView" class="hidden min-h-screen flex items-center justify-center bg-white p-4">
+  <!-- 1. AUTH VIEW (LOGIN / DAFTAR) --><div id="authView" class="hidden min-h-screen flex items-center justify-center bg-white p-4">
     <div class="w-full max-w-md">
-      <!-- Logo FB di gambar -->
-      <div class="text-center mb-10">
+      <!-- Logo FB di gambar --><div class="text-center mb-10">
         <svg class="mx-auto" fill="#1877F2" viewBox="0 0 24 24" width="48px" height="48px"><path d="M12 2C6.477 2 2 6.477 2 12c0 5.016 3.655 9.182 8.437 9.879V14.92h-2.92v-2.92h2.92V9.69c0-2.887 1.761-4.47 4.33-4.47.828 0 1.54.062 1.748.09V7.89h-1.571c-1.39 0-1.66.66-1.66 1.63V11.8h3.284l-.527 2.92h-2.757v6.959C18.345 21.182 22 17.016 22 12c0-5.523-4.477-10-10-10z"/></svg>
       </div>
 
-      <!-- Login Card -->
-      <div id="loginCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+      <!-- Login Card --><div id="loginCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
         <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Masuk ke Tempat Curhat</h3>
         <form id="loginForm" class="space-y-4">
           <input type="email" name="email" placeholder="Email" required
@@ -506,8 +500,7 @@
         </button>
       </div>
       
-      <!-- Register Card (Hidden by default) -->
-      <div id="registerCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
+      <!-- Register Card (Hidden by default) --><div id="registerCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
         <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Daftar Akun Baru</h3>
         <form id="registerForm" class="space-y-4">
           <input type="email" name="email" placeholder="Email baru" required
@@ -528,31 +521,26 @@
   </div>
 
 
-  <!-- 2. MAIN VIEW (FEED) -->
-  <div id="mainView" class="hidden pt-[56px] min-h-screen">
+  <!-- 2. MAIN VIEW (FEED) --><!-- PERHATIKAN: pt-16 di sini untuk mendorong konten di bawah navbar --><div id="mainView" class="hidden pt-16 min-h-screen">
     
-    <!-- HEADER NAVBAR (Fixed Top) -->
-    <nav class="fixed top-0 left-0 right-0 bg-white shadow-md z-10">
+    <!-- HEADER NAVBAR (Fixed Top) --><nav class="fixed top-0 left-0 right-0 bg-white shadow-md z-10">
       <div class="flex items-center justify-between max-w-xl mx-auto p-3">
         <h1 class="text-2xl font-extrabold text-fb-blue">CurhatApp</h1>
         <div class="flex items-center space-x-3">
             <button id="logoutBtn" class="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition duration-150">
-                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
             </button>
         </div>
       </div>
-      <!-- Tab Navigasi (Placeholder untuk visual) -->
-      <div class="flex justify-around border-t border-gray-200 text-gray-500">
+      <!-- Tab Navigasi (Placeholder untuk visual) --><div class="flex justify-around border-t border-gray-200 text-gray-500">
         <div class="p-3 text-fb-blue border-b-2 border-fb-blue font-semibold">Feed Curhat</div>
         <div class="p-3 hover:bg-gray-100 transition duration-150">Notifikasi</div>
       </div>
     </nav>
 
-    <!-- PENTING: Penyesuaian Padding Bottom (pb-10) di sini agar ada ruang scroll ekstra di bawah -->
-    <div class="max-w-xl mx-auto px-3 pt-3 pb-10"> 
+    <!-- PENTING: Penyesuaian Padding Bottom (pb-10) di sini agar ada ruang scroll ekstra di bawah --><div class="max-w-xl mx-auto px-3 pt-3 pb-10"> 
         
-        <!-- Curhat Form Trigger (Atas Feed) -->
-        <div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
+        <!-- Curhat Form Trigger (Atas Feed) --><div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
             <div class="flex items-center space-x-2">
                 <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
                     <span id="userStatusDisplay" class="font-semibold text-white">?</span>
@@ -573,18 +561,15 @@
             </div>
         </div>
 
-        <!-- Curhat List / Feed -->
-        <div id="curhatList">
+        <!-- Curhat List / Feed --><div id="curhatList">
           <p class="text-center text-gray-500 mt-10">Memuat curhatan...</p>
         </div>
     </div>
   </div>
 
 
-  <!-- 3. POST VIEW (FORM POSTING) -->
-  <div id="postView" class="hidden fixed inset-0 flex flex-col bg-white z-20">
-    <!-- Header Form Posting -->
-    <header class="flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
+  <!-- 3. POST VIEW (FORM POSTING) --><div id="postView" class="hidden fixed inset-0 flex flex-col bg-white z-20">
+    <!-- Header Form Posting --><header class="flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
         <button id="postFormBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
         </button>
@@ -594,8 +579,7 @@
         </button>
     </header>
 
-    <!-- Konten Form Posting -->
-    <div class="flex-grow p-4 overflow-y-auto">
+    <!-- Konten Form Posting --><div class="flex-grow p-4 overflow-y-auto">
         <div class="flex items-center mb-6">
             <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
                 <span id="postUsernameDisplay" class="font-semibold text-white">?</span>
@@ -619,8 +603,7 @@
         
     </div>
 
-    <!-- Footer Fitur Tambahan (Placeholder UI) -->
-    <div class="border-t border-gray-200 p-4">
+    <!-- Footer Fitur Tambahan (Placeholder UI) --><div class="border-t border-gray-200 p-4">
         <div class="space-y-4">
             <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
                 <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
