@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-R" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CharAI Studio (Panggung React)</title>
+    
+    <!-- 
+      Di proyek nyata, file CSS (seperti Tailwind) akan dimuat di sini.
+      Di platform ini, itu juga diurus otomatis.
+    -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- 
+      (1) INI ADALAH BAGIAN TERPENTING!
+      
+      Ini adalah "Panggung" kosong yang Anda sebutkan.
+      Aplikasi React kita (Navbar, tombol, halaman, dll) akan 
+      "disuntikkan" (injected) secara dinamis oleh JavaScript ke dalam div ini.
+      
+      Browser awalnya hanya memuat <body> kosong dengan satu div ini.
+    -->
+    <div id="root"></div>
+
+    <!-- 
+      (2) MEMUAT KODE REACT
+      
+      Di proyek modern, sebuah 'build tool' akan menggabungkan semua 
+      kode .jsx Anda menjadi satu file JavaScript (misal: /assets/index.js).
+      File itulah yang akan dimuat di sini.
+      
+      Script ini akan mencari <div id="root"> dan mengambil alih 
+      sepenuhnya untuk menampilkan aplikasi React.
+    -->
+    <script type="module" src="/assets/index.js"></script>
+    
+    <!-- 
+      (Penjelasan Tambahan):
+      
+      File 'index.js' yang tidak terlihat itu kira-kira berisi:
+      
+      import React from 'react';
+      import ReactDOM from 'react-dom/client';
+      import App from './CharAI_Studio.jsx'; // Mengimpor komponen utama kita
+      
+      // Memberitahu React untuk "mengambil alih" div#root
+      const rootElement = document.getElementById('root');
+      
+      // Merender komponen <App> kita di dalam div#root
+      ReactDOM.createRoot(rootElement).render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+    -->
+  </body>
+</html>
