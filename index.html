@@ -36,6 +36,9 @@
       font-family: 'Inter', sans-serif; 
       background-color: #F0F2F5; /* fb-gray */
       transition: background-color 0.3s;
+      /* Memastikan body bisa digulir */
+      min-height: 100vh;
+      overflow-y: auto; 
     }
 
     /* Mengganti warna scrollbar untuk estetika */
@@ -271,6 +274,16 @@
       const q = query(collection(db, "curhatan"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(q, (snapshot) => {
         curhatList.innerHTML = "";
+        
+        // Jika tidak ada data, tampilkan dummy post agar bisa di-scroll
+        if (snapshot.empty) {
+             curhatList.innerHTML = `
+                <p class="text-center text-gray-500 mt-10 mb-4">Belum ada curhatan. Ayo buat yang pertama!</p>
+                ${generateDummyPosts()}
+            `;
+            return;
+        }
+
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           const id = docSnap.id;
@@ -374,6 +387,38 @@
         console.error("Listen curhatan error:", err);
       });
       return unsub;
+    }
+
+    // --- Helper: Generate Dummy Posts untuk Scrollable View ---
+    function generateDummyPosts() {
+        const dummyData = [
+            { name: "Sistem", text: "Curhatanmu akan muncul di sini. Coba buat postingan pertamamu!", time: "Sekarang" },
+            { name: "Pengguna Anonim", text: "Halaman ini sudah bisa di-scroll ke bawah dan ke atas. Gulir terus untuk melihat postingan lama!", time: "1 jam lalu" },
+            { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "1 hari lalu" },
+            { name: "Budi", text: "Semoga aplikasinya ramai ya! Saya senang dengan tampilan barunya. Sangat responsif di ponsel.", time: "2 hari lalu" },
+            { name: "Dewi", text: "Hari ini cuaca cerah sekali, mood jadi bagus! ✨", time: "3 hari lalu" },
+            { name: "Placeholder", text: "Curhatan ke-6: Apakah saya sudah bisa melihat scroll bar? Ya, sudah! 👍", time: "4 hari lalu" }
+        ];
+
+        return dummyData.map(data => `
+            <div class="post-card mb-3 shadow-md opacity-50">
+                <div class="p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-lg mr-2">${data.name[0]}</div>
+                        <div class="flex-grow">
+                            <p class="font-semibold text-gray-900">${data.name}</p>
+                            <p class="text-xs text-gray-500">${data.time} · Dummy</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${data.text}</p>
+                    <div class="flex justify-around border-t border-gray-200 mt-4 pt-2 text-gray-400">
+                        <button class="p-2">Suka</button>
+                        <button class="p-2">Komentar</button>
+                        <button class="p-2">Bagikan</button>
+                    </div>
+                </div>
+            </div>
+        `).join("");
     }
 
     // --- Helper: escape untuk mencegah XSS sederhana ---
@@ -503,7 +548,8 @@
       </div>
     </nav>
 
-    <div class="max-w-xl mx-auto p-3">
+    <!-- PENTING: Penyesuaian Padding Bottom (pb-10) di sini agar ada ruang scroll ekstra di bawah -->
+    <div class="max-w-xl mx-auto px-3 pt-3 pb-10"> 
         
         <!-- Curhat Form Trigger (Atas Feed) -->
         <div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
