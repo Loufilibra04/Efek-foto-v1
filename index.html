@@ -2,15 +2,56 @@
 <html lang="id">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tempat Curhat 💬</title>
+
+  <!-- Tailwind CSS CDN untuk styling modern dan responsif -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Konfigurasi Tailwind untuk font Inter dan warna kustom -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'primary': '#4F46E5', // Indigo 600
+            'primary-dark': '#4338CA', // Indigo 700
+            'accent': '#10B981', // Emerald 500
+            'bg-light': '#F9FAFB', // Light gray background
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Font: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Styling dasar untuk memastikan body menggunakan font Inter */
+    body { font-family: 'Inter', sans-serif; }
+    
+    /* Styling khusus untuk modal agar tetap di tengah */
+    #profileModal { 
+      display:none; 
+      position:fixed; 
+      inset:0; 
+      background: rgba(0,0,0,0.45); 
+      align-items:center; 
+      justify-content:center; 
+      z-index:999; 
+    }
+  </style>
 
   <script type="module">
     // --- Firebase SDK (CDN) ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc } 
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     // --- CONFIG FIREBASE (pakai config kamu) ---
@@ -50,6 +91,8 @@
         // Setelah register, langsung minta isi nama -> onAuthStateChanged akan handle modal
         registerForm.reset();
       } catch (err) {
+        // Ganti alert() dengan UI modal/message box yang lebih baik jika ini aplikasi produksi
+        console.error("Gagal daftar:", err);
         alert("Gagal daftar: " + err.message);
       }
     });
@@ -63,6 +106,8 @@
         await signInWithEmailAndPassword(auth, email, pass);
         loginForm.reset();
       } catch (err) {
+        // Ganti alert()
+        console.error("Gagal login:", err);
         alert("Gagal login: " + err.message);
       }
     });
@@ -87,12 +132,13 @@
     profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = profileNameInput.value.trim();
-      if (!name) return alert("Nama tidak boleh kosong");
+      if (!name) return alert("Nama tidak boleh kosong"); // Ganti alert()
       try {
         await saveProfileName(name);
         profileModal.style.display = "none";
       } catch (err) {
-        alert("Gagal simpan nama: " + err.message);
+        console.error("Gagal simpan nama:", err);
+        alert("Gagal simpan nama: " + err.message); // Ganti alert()
       }
     });
 
@@ -108,24 +154,24 @@
       if (user) {
         // kalau displayName belum ada, minta user isi nama profil dulu
         if (!user.displayName) {
-          profileModal.style.display = "block";
+          profileModal.style.display = "flex"; // Gunakan flex untuk centering
           userStatus.textContent = `Login sebagai: ${user.email} (Isi nama profil dulu)`;
-          document.querySelector(".auth").style.display = "none";
-          document.querySelector(".main").style.display = "none";
+          document.querySelector(".auth-section").style.display = "none";
+          document.querySelector(".main-section").style.display = "none";
           return;
         }
 
         // sudah punya displayName
         userStatus.textContent = `Login sebagai: ${user.displayName}`;
-        document.querySelector(".auth").style.display = "none";
-        document.querySelector(".main").style.display = "block";
+        document.querySelector(".auth-section").style.display = "none";
+        document.querySelector(".main-section").style.display = "block";
 
         // start listen curhatan real-time
         unsubscribeCurhatListener = listenCurhatan();
       } else {
         userStatus.textContent = "Belum login";
-        document.querySelector(".auth").style.display = "block";
-        document.querySelector(".main").style.display = "none";
+        document.querySelector(".auth-section").style.display = "block";
+        document.querySelector(".main-section").style.display = "none";
         profileModal.style.display = "none";
       }
     });
@@ -136,7 +182,7 @@
       const text = e.target.text.value.trim();
       if (!text) return;
       const user = auth.currentUser;
-      if (!user) return alert("Harus login dulu");
+      if (!user) return alert("Harus login dulu"); // Ganti alert()
       const userName = user.displayName || user.email;
       try {
         await addDoc(collection(db, "curhatan"), {
@@ -148,7 +194,8 @@
         });
         curhatForm.reset();
       } catch (err) {
-        alert("Gagal posting: " + err.message);
+        console.error("Gagal posting:", err);
+        alert("Gagal posting: " + err.message); // Ganti alert()
       }
     });
 
@@ -165,15 +212,34 @@
           const displayName = data.userName || data.user || "Anon";
 
           const div = document.createElement("div");
-          div.className = "curhat";
+          // Perbarui class untuk styling Tailwind
+          div.className = "curhat p-4 bg-white rounded-xl shadow-md mt-4 border border-gray-100";
           div.innerHTML = `
-            <p><b>${escapeHtml(displayName)}</b>: ${escapeHtml(data.text)}</p>
-            <div class="comments">
-              ${(data.comments || []).map(c => `<p>💬 <b>${escapeHtml(c.userName || c.user)}</b>: ${escapeHtml(c.text)}</p>`).join("")}
+            <!-- Curhatan Utama -->
+            <p class="text-gray-800 break-words">
+              <span class="font-bold text-primary">${escapeHtml(displayName)}</span>: ${escapeHtml(data.text)}
+            </p>
+            
+            <!-- Komentar -->
+            <div class="comments mt-3 space-y-2 border-t border-gray-100 pt-3">
+              ${(data.comments || []).map(c => `
+                <div class="flex items-start text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
+                  <span class="mr-2 text-primary-dark">💬</span>
+                  <p class="flex-grow break-words">
+                    <span class="font-medium text-gray-700">${escapeHtml(c.userName || c.user)}</span>: ${escapeHtml(c.text)}
+                  </p>
+                </div>
+              `).join("")}
             </div>
-            <form class="commentForm">
-              <input type="text" placeholder="Tulis komentar..." required>
-              <button>Kirim</button>
+            
+            <!-- Form Komentar -->
+            <form class="commentForm mt-3 flex gap-2">
+              <input type="text" placeholder="Tulis komentar..." required 
+                class="flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary-dark transition duration-150 text-sm"
+              >
+              <button class="bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-lg transition duration-150 text-sm shadow-md">
+                Kirim
+              </button>
             </form>
           `;
           const form = div.querySelector(".commentForm");
@@ -182,7 +248,7 @@
             const commentText = e.target[0].value.trim();
             if (!commentText) return;
             const user = auth.currentUser;
-            if (!user) return alert("Harus login dulu");
+            if (!user) return alert("Harus login dulu"); // Ganti alert()
             const commenterName = user.displayName || user.email;
             try {
               await updateDoc(doc(db, "curhatan", id), {
@@ -190,7 +256,8 @@
               });
               e.target.reset();
             } catch (err) {
-              alert("Gagal kirim komentar: " + err.message);
+              console.error("Gagal kirim komentar:", err);
+              alert("Gagal kirim komentar: " + err.message); // Ganti alert()
             }
           });
           curhatList.appendChild(div);
@@ -213,64 +280,90 @@
     }
 
   </script>
-
-  <style>
-    body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: #f2f2f2; padding: 20px; }
-    h1 { text-align: center; font-family: 'Baloo 2', cursive; font-size: 36px; }
-    .container { max-width: 700px; margin: auto; background: white; padding: 22px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
-    .curhat { background: #fafafa; padding: 12px; margin-top: 12px; border-radius: 10px; }
-    .comments { margin-left: 8px; font-size: 0.95em; color: #444; margin-top:8px; }
-    .commentForm { display: flex; gap: 8px; margin-top: 8px; }
-    input[type="text"], textarea { padding: 10px; border-radius: 8px; border: 1px solid #ddd; width: 100%; font-size: 15px; }
-    button { padding: 10px 14px; border-radius: 8px; border: none; background: #007bff; color: white; cursor: pointer; }
-    #logoutBtn { margin-top: 6px; background: #d9534f; padding: 8px 12px; border-radius: 8px; color: white; border: none; }
-    /* modal profile */
-    #profileModal { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:999; }
-    #profileModal .box { background:white; padding:20px; border-radius:10px; width:90%; max-width:420px; text-align:center; }
-    #profileModal input { margin-top:12px; }
-  </style>
 </head>
 
-<body>
-  <div class="container">
-    <h1>Tempat Curhat 💬</h1>
-    <p id="userStatus">Belum login</p>
-    <button id="logoutBtn">Logout</button>
+<body class="min-h-screen bg-bg-light p-4 md:p-8">
+  <div class="container mx-auto max-w-xl bg-white p-6 md:p-8 rounded-2xl shadow-2xl shadow-indigo-200">
+    
+    <!-- HEADER -->
+    <header class="mb-6 pb-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <h1 class="text-3xl font-extrabold text-primary mb-2 sm:mb-0">Tempat Curhat 💬</h1>
+      <div class="flex items-center space-x-3">
+        <p id="userStatus" class="text-sm text-gray-500 font-medium whitespace-nowrap">Belum login</p>
+        <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-3 py-1.5 rounded-lg transition duration-150 shadow-md text-sm">
+          Logout
+        </button>
+      </div>
+    </header>
 
-    <div class="auth">
-      <h3>Login</h3>
-      <form id="loginForm">
-        <input type="email" name="email" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <button>Login</button>
-      </form>
+    <!-- AUTH SECTION (Login/Register) -->
+    <div class="auth-section space-y-6">
+      <!-- Login Card -->
+      <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-lg">
+        <h3 class="text-xl font-bold text-primary mb-4">Masuk ke Akun</h3>
+        <form id="loginForm" class="space-y-4">
+          <input type="email" name="email" placeholder="Email" required
+            class="w-full px-4 py-3 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150"
+          >
+          <input type="password" name="password" placeholder="Password" required
+            class="w-full px-4 py-3 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150"
+          >
+          <button class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+            Login
+          </button>
+        </form>
+      </div>
 
-      <h3>Daftar</h3>
-      <form id="registerForm">
-        <input type="email" name="email" placeholder="Email baru" required>
-        <input type="password" name="password" placeholder="Password baru" required>
-        <button>Daftar</button>
-      </form>
+      <!-- Register Card -->
+      <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-lg">
+        <h3 class="text-xl font-bold text-gray-700 mb-4">Daftar Akun Baru</h3>
+        <form id="registerForm" class="space-y-4">
+          <input type="email" name="email" placeholder="Email baru" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition duration-150"
+          >
+          <input type="password" name="password" placeholder="Password baru" required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition duration-150"
+          >
+          <button class="w-full bg-accent hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+            Daftar
+          </button>
+        </form>
+      </div>
     </div>
 
-    <div class="main" style="display:none;">
-      <form id="curhatForm">
-        <textarea name="text" rows="4" placeholder="Tulis curhatanmu di sini..." required></textarea>
-        <button>Posting Curhatan</button>
+    <!-- MAIN SECTION (Curhat Form & List) -->
+    <div class="main-section" style="display:none;">
+      <!-- Post Curhat Form -->
+      <form id="curhatForm" class="bg-white p-6 mb-6 rounded-xl shadow-lg border border-gray-100">
+        <h3 class="text-xl font-bold text-gray-700 mb-3">Tulis Curhatanmu</h3>
+        <textarea name="text" rows="4" placeholder="Apa yang ada di pikiranmu saat ini?" required
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150 resize-none mb-3"
+        ></textarea>
+        <button class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-lg transition duration-150 shadow-lg">
+          <span class="mr-2">✨</span> Posting Curhatan
+        </button>
       </form>
-      <div id="curhatList"></div>
+      
+      <!-- Curhat List will be populated here by JS -->
+      <h3 class="text-2xl font-bold text-gray-700 mb-4 mt-8">Curhatan Terbaru</h3>
+      <div id="curhatList" class="space-y-4">
+        <!-- Curhat items injected here -->
+      </div>
     </div>
   </div>
 
-  <!-- Modal untuk set nama -->
-  <div id="profileModal">
-    <div class="box">
-      <h3>Selamat datang! 👋</h3>
-      <p>Isi nama profil dulu biar email-mu gak keliatan di feed.</p>
-      <form id="profileForm">
-        <input id="profileName" type="text" placeholder="Nama yang mau ditampilkan" required />
-        <br/>
-        <button type="submit">Simpan Nama</button>
+  <!-- Modal untuk set nama (Wajib diisi setelah daftar/login pertama) -->
+  <div id="profileModal" class="flex">
+    <div class="box bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm text-center transform transition-all duration-300">
+      <h3 class="text-2xl font-extrabold text-primary mb-2">Selamat datang! 👋</h3>
+      <p class="text-gray-600 mb-6">Untuk mulai curhat, tolong isi nama profil yang ingin kamu gunakan.</p>
+      <form id="profileForm" class="space-y-4">
+        <input id="profileName" type="text" placeholder="Nama yang mau ditampilkan" required 
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent transition duration-150"
+        />
+        <button type="submit" class="w-full bg-accent hover:bg-emerald-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+          Simpan Nama
+        </button>
       </form>
     </div>
   </div>
