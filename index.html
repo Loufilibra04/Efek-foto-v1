@@ -20,6 +20,8 @@
             'fb-gray': '#F0F2F5',
             'fb-dark': '#3A3B3C',
             'fb-dark-bg': '#18191A',
+            'chat-sent': '#0084FF', // (BARU) Warna chat biru
+            'chat-received': '#E4E6EB', // (BARU) Warna chat abu
           },
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
@@ -34,23 +36,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    /* Mengatur body default agar sesuai dengan mode terang (light mode) */
+    /* ... (CSS default Anda tetap di sini) ... */
     body { 
       font-family: 'Inter', sans-serif; 
       background-color: #F0F2F5; /* fb-gray */
       transition: background-color 0.3s;
-      /* Memastikan body bisa digulir */
       min-height: 100vh;
       overflow-y: auto; 
     }
-
-    /* Mengganti warna scrollbar untuk estetika */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; }
     ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #555; }
-    
-    /* Input dan Button default styling (overridden by Tailwind classes) */
     input[type="text"], input[type="email"], input[type="password"], textarea { 
         padding: 12px;
         border-radius: 8px;
@@ -64,8 +61,6 @@
         border-color: #1877F2;
         box-shadow: 0 0 0 1px #1877F2;
     }
-
-    /* Styling khusus untuk modal agar tetap di tengah */
     #profileModal { 
       display:none; 
       position:fixed; 
@@ -77,7 +72,7 @@
     }
     
     /* Modal Lokasi & Perasaan (Fullscreen) */
-    #locationModal, #feelingModal {
+    #locationModal, #feelingModal, #chatView { /* (BARU) Menambahkan chatView */
         background: #fff;
         display: none; 
         position: fixed;
@@ -87,8 +82,13 @@
         justify-content: flex-start;
         z-index: 2000; /* Lebih tinggi dari postView */
     }
+    
+    /* (BARU) Pastikan chatView di atas postView, dll */
+    #chatView {
+        z-index: 3000; 
+        background-color: #FFFFFF; /* Latar belakang putih */
+    }
 
-    /* KARTU POSTING (untuk konsistensi tampilan seperti gambar) */
     .post-card {
         background-color: white;
         border-radius: 12px;
@@ -100,6 +100,52 @@
     .feeling-tab.active {
         border-color: #1877F2; /* fb-blue */
         color: #1877F2;
+    }
+
+    /* ============================================= */
+    /* (BARU) CSS UNTUK CHAT BUBBLES */
+    /* ============================================= */
+    #chatMessageList {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+    }
+    .chat-message-container {
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-bubble {
+        max-width: 70%;
+        padding: 8px 12px;
+        border-radius: 18px;
+        word-wrap: break-word;
+        font-size: 15px;
+        line-height: 1.4;
+    }
+    .chat-sender-name {
+        font-size: 12px;
+        color: #65676B;
+        margin-left: 12px;
+        margin-bottom: 2px;
+    }
+
+    /* Pesan Diterima (Orang Lain) */
+    .chat-message-container.received {
+        align-items: flex-start;
+    }
+    .chat-bubble.received {
+        background-color: #E4E6EB; /* chat-received */
+        color: #050505;
+    }
+    
+    /* Pesan Terkirim (Anda) */
+    .chat-message-container.sent {
+        align-items: flex-end;
+    }
+    .chat-bubble.sent {
+        background-color: #0084FF; /* chat-sent */
+        color: white;
     }
   </style>
 
@@ -119,7 +165,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc } 
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
@@ -127,10 +173,9 @@
     const db = getFirestore(app);
 
     // --- State Aplikasi ---
-    let currentPage = 'Auth'; // Bisa 'Auth', 'Main', atau 'Post'
-    // State baru
-    let selectedLocation = null; // {name: "Nama Lokasi", detail: "Detail Lokasi"}
-    let selectedFeeling = null; // {type: 'feeling'/'activity', emoji: "😊", text: "senang"}
+    let currentPage = 'Auth'; // Bisa 'Auth', 'Main', 'Post', atau 'Chat' (BARU)
+    let selectedLocation = null; 
+    let selectedFeeling = null; 
     
     // --- Data Lokasi Dummy ---
     const DUMMY_LOCATIONS = [
@@ -142,29 +187,16 @@
       { name: "Kampung Beru Kec, bangkala Kab, jeneponto", detail: "Bangkala, South Sulawesi, ID" },
       { name: "Desa Laikang", detail: "Jeneponto, South Sulawesi, ID" },
     ];
-
-    // --- Data Perasaan/Aktivitas Dummy (BARU) ---
+    // --- Data Perasaan/Aktivitas Dummy ---
     const DUMMY_FEELINGS = [
-      { emoji: "😊", text: "senang" },
-      { emoji: "😇", text: "terberkati" },
-      { emoji: "🥰", text: "dicintai" },
-      { emoji: "😥", text: "sedih" },
-      { emoji: "😍", text: "penuh cinta" },
-      { emoji: "🙏", text: "bersyukur" },
-      { emoji: "🤩", text: "bersemangat" },
-      { emoji: "😘", text: "jatuh cinta" },
-      { emoji: "🤪", text: "gila" },
-      { emoji: "🥳", text: "penuh kegembiraan" },
-      { emoji: "🤩", text: "fantastis" },
+      { emoji: "😊", text: "senang" }, { emoji: "😇", text: "terberkati" }, { emoji: "🥰", text: "dicintai" },
+      { emoji: "😥", text: "sedih" }, { emoji: "😍", text: "penuh cinta" }, { emoji: "🙏", text: "bersyukur" },
+      { emoji: "🤩", text: "bersemangat" }, { emoji: "😘", text: "jatuh cinta" }, { emoji: "🤪", text: "gila" },
+      { emoji: "🥳", text: "penuh kegembiraan" }, { emoji: "🤩", text: "fantastis" },
     ];
-
     const DUMMY_ACTIVITIES = [
-        { emoji: "🎉", text: "merayakan..." },
-        { emoji: "✈️", text: "bepergian ke..." },
-        { emoji: "☕", text: "minum kopi" },
-        { emoji: "📖", text: "membaca buku" },
-        { emoji: "🎧", text: "mendengarkan musik" },
-        { emoji: "🎮", text: "bermain game" },
+        { emoji: "🎉", text: "merayakan..." }, { emoji: "✈️", text: "bepergian ke..." }, { emoji: "☕", text: "minum kopi" },
+        { emoji: "📖", text: "membaca buku" }, { emoji: "🎧", text: "mendengarkan musik" }, { emoji: "🎮", text: "bermain game" },
     ];
 
 
@@ -181,11 +213,9 @@
     const profileForm = document.getElementById("profileForm");
     const profileNameInput = document.getElementById("profileName");
     const postFormBackBtn = document.getElementById("postFormBackBtn");
-    // (Perbaikan ID) Mengganti postUsernameDisplay menjadi 2 ID unik
     const postAvatarLetter = document.getElementById("postAvatarLetter");
     const postUsernameText = document.getElementById("postUsernameText");
-
-
+    
     // Elemen Lokasi
     const locationModal = document.getElementById("locationModal");
     const locationList = document.getElementById("locationList");
@@ -193,12 +223,21 @@
     const locationSelectionBar = document.getElementById("locationSelectionBar");
     const locationBarText = document.getElementById("locationBarText");
 
-    // Elemen Perasaan (BARU)
+    // Elemen Perasaan
     const feelingModal = document.getElementById("feelingModal");
     const feelingList = document.getElementById("feelingList");
     const feelingSearchInput = document.getElementById("feelingSearchInput");
     const feelingTabPerasaan = document.getElementById("feelingTabPerasaan");
     const feelingTabAktivitas = document.getElementById("feelingTabAktivitas");
+
+    // (BARU) Elemen Chat Global
+    const chatView = document.getElementById("chatView");
+    const goToChatBtn = document.getElementById("goToChatBtn");
+    const chatBackBtn = document.getElementById("chatBackBtn");
+    const chatMessageList = document.getElementById("chatMessageList");
+    const chatForm = document.getElementById("chatForm");
+    const chatTextInput = document.getElementById("chatTextInput");
+
 
     // --- Fungsi Navigasi Halaman ---
     function navigateTo(page) {
@@ -206,8 +245,9 @@
       authView.style.display = 'none';
       mainView.style.display = 'none';
       postView.style.display = 'none';
-      locationModal.style.display = 'none';
-      feelingModal.style.display = 'none'; // Pastikan modal perasaan tertutup
+      locationModal.style.display = 'none'; 
+      feelingModal.style.display = 'none'; 
+      chatView.style.display = 'none'; // (BARU) Sembunyikan chat view
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -215,17 +255,18 @@
         mainView.style.display = 'block';
       } else if (page === 'Post') {
         postView.style.display = 'flex';
-        renderLocationBar(); // Panggil saat masuk ke Post view
-        renderPostHeader(); // (BARU) Panggil untuk update nama + perasaan
+        renderLocationBar(); 
+        renderPostHeader(); 
+      } else if (page === 'Chat') { // (BARU) Navigasi ke Chat
+        chatView.style.display = 'flex';
       }
     }
 
     // --- EVENT LISTENERS UI ---
     document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
     document.getElementById('goToPostBtn').addEventListener('click', () => {
-        // Reset lokasi & perasaan saat memulai post baru
         selectedLocation = null;
-        selectedFeeling = null; // (BARU) Reset perasaan
+        selectedFeeling = null; 
         navigateTo('Post');
     });
     postFormBackBtn.addEventListener('click', () => navigateTo('Main'));
@@ -237,6 +278,11 @@
       document.getElementById('registerCard').style.display = 'none';
       document.getElementById('loginCard').style.display = 'block';
     });
+
+    // (BARU) Navigasi Chat
+    goToChatBtn.addEventListener('click', () => navigateTo('Chat'));
+    chatBackBtn.addEventListener('click', () => navigateTo('Main'));
+
 
     // --- Event Listener Lokasi ---
     document.getElementById('openLocationModalBtn').addEventListener('click', () => {
@@ -259,9 +305,9 @@
       renderLocationList(filtered);
     });
     
-    // --- Event Listener Perasaan (BARU) ---
+    // --- Event Listener Perasaan ---
     document.getElementById('openFeelingModalBtn').addEventListener('click', () => {
-      renderFeelingList(DUMMY_FEELINGS, 'feeling'); // Tampilkan tab perasaan by default
+      renderFeelingList(DUMMY_FEELINGS, 'feeling'); 
       feelingTabPerasaan.classList.add('active');
       feelingTabAktivitas.classList.remove('active');
       feelingSearchInput.value = '';
@@ -270,7 +316,6 @@
     document.getElementById('feelingModalBackBtn').addEventListener('click', () => {
       feelingModal.style.display = 'none';
     });
-    // Tab Listeners
     feelingTabPerasaan.addEventListener('click', () => {
         renderFeelingList(DUMMY_FEELINGS, 'feeling');
         feelingTabPerasaan.classList.add('active');
@@ -281,12 +326,10 @@
         feelingTabPerasaan.classList.remove('active');
         feelingTabAktivitas.classList.add('active');
     });
-    // Filter Perasaan/Aktivitas
     feelingSearchInput.addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase();
         const currentType = feelingTabPerasaan.classList.contains('active') ? 'feeling' : 'activity';
         const sourceData = currentType === 'feeling' ? DUMMY_FEELINGS : DUMMY_ACTIVITIES;
-        
         const filtered = sourceData.filter(item => 
             item.text.toLowerCase().includes(searchTerm)
         );
@@ -295,8 +338,6 @@
 
 
     // --- Fungsi Render dan Logika Lokasi ---
-
-    // Menampilkan bar lokasi di bawah textarea posting
     function renderLocationBar() {
       if (selectedLocation) {
         locationBarText.textContent = selectedLocation.name;
@@ -305,8 +346,6 @@
         locationSelectionBar.classList.add('hidden');
       }
     }
-
-    // Menampilkan daftar lokasi di modal
     function renderLocationList(locations) {
       locationList.innerHTML = '';
       if (locations.length === 0) {
@@ -326,23 +365,18 @@
         item.addEventListener('click', () => {
           selectedLocation = loc;
           locationModal.style.display = 'none';
-          navigateTo('Post'); // Kembali ke post view
+          navigateTo('Post'); 
         });
         locationList.appendChild(item);
       });
     }
 
-    // --- Fungsi Render Perasaan (BARU) ---
-
-    // (BARU) Render header di halaman Post (Nama + Perasaan)
-    // Sesuai Screenshot_2025_1101_052430.png
+    // --- Fungsi Render Perasaan ---
     function renderPostHeader() {
         const user = auth.currentUser;
         if (!user) return;
-        
         const name = user.displayName || user.email;
-        postAvatarLetter.textContent = name[0] || '?'; // Avatar
-
+        postAvatarLetter.textContent = name[0] || '?'; 
         let feelingHTML = '';
         if (selectedFeeling) {
             const actionText = selectedFeeling.type === 'feeling' ? 'merasa' : 'sedang';
@@ -350,8 +384,6 @@
         }
         postUsernameText.innerHTML = `${escapeHtml(name)}${feelingHTML}`;
     }
-
-    // (BARU) Menampilkan daftar perasaan/aktivitas di modal
     function renderFeelingList(items, type) {
         feelingList.innerHTML = '';
         if (items.length === 0) {
@@ -370,13 +402,13 @@
             item.addEventListener('click', () => {
                 selectedFeeling = { type: type, ...itemData };
                 feelingModal.style.display = 'none';
-                navigateTo('Post'); // Kembali ke post view (akan memanggil renderPostHeader)
+                navigateTo('Post'); 
             });
             feelingList.appendChild(item);
         });
     }
 
-    // --- Bagian Auth, Profile, dan Firestore ---
+    // --- Bagian Auth, Profile ---
     
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -430,17 +462,22 @@
     });
 
     let unsubscribeCurhatListener = null;
+    let unsubscribeChatListener = null; // (BARU) Listener untuk chat
+
     onAuthStateChanged(auth, async (user) => {
       if (unsubscribeCurhatListener) {
         unsubscribeCurhatListener();
         unsubscribeCurhatListener = null;
       }
+      // (BARU) Hentikan listener chat saat logout
+      if (unsubscribeChatListener) {
+        unsubscribeChatListener();
+        unsubscribeChatListener = null;
+      }
 
       if (user) {
         const displayName = user.displayName || user.email;
         userStatusDisplay.textContent = displayName; 
-        
-        // (PERBAIKAN) Memanggil renderPostHeader alih-alih set textContent
         renderPostHeader(); 
         
         if (!user.displayName) {
@@ -453,13 +490,14 @@
         navigateTo('Main');
 
         unsubscribeCurhatListener = listenCurhatan();
+        unsubscribeChatListener = listenGlobalChat(); // (BARU) Mulai dengarkan chat
       } else {
         userStatusDisplay.textContent = "Guest";
         navigateTo('Auth');
       }
     });
 
-    // --- POST CURHATAN (Menambahkan data lokasi & perasaan ke Firestore) ---
+    // --- POST CURHATAN (Firestore) ---
     curhatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = e.target.text.value.trim();
@@ -467,30 +505,17 @@
       const user = auth.currentUser;
       if (!user) return showModalMessage("Kesalahan", "Harus login dulu");
       const userName = user.displayName || user.email;
-      
       const postData = {
-        text,
-        userId: user.uid,
-        userName,
-        createdAt: new Date(),
-        comments: []
+        text, userId: user.uid, userName, createdAt: new Date(), comments: []
       };
-
-      // Tambahkan lokasi jika sudah dipilih
-      if (selectedLocation) {
-          postData.location = selectedLocation;
-      }
-      
-      // (BARU) Tambahkan perasaan jika sudah dipilih
-      if (selectedFeeling) {
-          postData.feeling = selectedFeeling;
-      }
+      if (selectedLocation) { postData.location = selectedLocation; }
+      if (selectedFeeling) { postData.feeling = selectedFeeling; }
 
       try {
         await addDoc(collection(db, "curhatan"), postData);
         curhatForm.reset();
-        selectedLocation = null; // Reset lokasi setelah post
-        selectedFeeling = null; // (BARU) Reset perasaan setelah post
+        selectedLocation = null; 
+        selectedFeeling = null; 
         navigateTo('Main'); 
       } catch (err) {
         console.error("Gagal posting:", err);
@@ -498,7 +523,36 @@
       }
     });
 
-    // --- LISTEN REAL-TIME CURHATAN (Memperbarui tampilan lokasi & perasaan) ---
+    // --- (BARU) KIRIM PESAN CHAT GLOBAL (Firestore) ---
+    chatForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = chatTextInput.value.trim();
+        if (!text) return;
+
+        const user = auth.currentUser;
+        if (!user) return showModalMessage("Kesalahan", "Harus login dulu");
+        const userName = user.displayName || user.email;
+
+        const messageData = {
+            text,
+            userId: user.uid,
+            userName,
+            createdAt: new Date()
+        };
+
+        try {
+            await addDoc(collection(db, "globalChat"), messageData);
+            chatForm.reset();
+            // Optimistic scroll to bottom
+            chatMessageList.scrollTop = chatMessageList.scrollHeight;
+        } catch (err) {
+            console.error("Gagal kirim pesan:", err);
+            showModalMessage("Gagal kirim pesan", err.message);
+        }
+    });
+
+
+    // --- LISTEN REAL-TIME CURHATAN ---
     function listenCurhatan() {
       const q = query(collection(db, "curhatan"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(q, (snapshot) => {
@@ -518,19 +572,15 @@
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           const id = docSnap.id;
-
           const displayName = data.userName || data.user || "Anon";
           const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
           const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
           
-          // Tentukan apakah ada lokasi
           const locationData = data.location;
           const locationDisplay = locationData 
               ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a>`
               : '';
               
-          // (BARU) Tentukan apakah ada perasaan
-          // Sesuai Screenshot_2025_1101_052454.png
           const feelingData = data.feeling;
           let feelingDisplay = '';
           if (feelingData) {
@@ -538,7 +588,6 @@
               feelingDisplay = ` ${escapeHtml(feelingData.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(feelingData.text)}.</span>`;
           }
               
-          // Tentukan tampilan Map Placeholder jika ada lokasi
           const mapPlaceholder = locationData 
               ? `
                 <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">
@@ -550,17 +599,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <p class="text-xs font-semibold uppercase text-gray-500">${locationData.detail.split(' · ')[0]}</p>
-                    <p class="text-lg font-extrabold text-gray-900">${escapeHtml(locationData.name)}</p>
-                    <p class="text-sm text-gray-600 mt-1 flex items-center">
-                        <svg class="w-4 h-4 mr-1 text-fb-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-5a2 2 0 00-2-2h-3v5zM9 10a3 3 0 100-6 3 3 0 000 6zM10 19a1 1 0 00-1-1H6a1 1 0 00-1 1v1h5v-1z"></path></svg>
-                        Anda dan 1 teman pernah ke sini (Dummy)
-                    </p>
-                </div>
             ` : '';
             
-
           const div = document.createElement("div");
           div.className = "post-card mb-3 shadow-md"; 
           div.innerHTML = `
@@ -576,11 +616,8 @@
                     </div>
                     ${isOwnPost ? '<div class="text-xs text-fb-blue">Anda</div>' : ''}
                 </div>
-
                 <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
-                
                 ${mapPlaceholder}
-
                 <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
                     <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
                         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
@@ -596,7 +633,6 @@
                     </button>
                 </div>
             </div>
-
             <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
                 <div class="comments space-y-3 mb-4">
                   ${(data.comments || []).map(c => `
@@ -609,7 +645,6 @@
                     </div>
                   `).join("")}
                 </div>
-                
                 <form class="commentForm flex gap-2 items-center">
                     <div class="w-8 h-8 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-sm">
                         ${auth.currentUser ? auth.currentUser.displayName[0] : 'A'}
@@ -623,15 +658,11 @@
                 </form>
             </div>
           `;
-          
-          // Toggle Komentar
           const commentToggleBtn = div.querySelector(".comment-toggle");
           const commentsArea = div.querySelector(".comments-area");
           commentToggleBtn.addEventListener('click', () => {
             commentsArea.classList.toggle('hidden');
           });
-
-          // Form Komentar Logic
           const form = div.querySelector(".commentForm");
           form.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -659,62 +690,94 @@
       return unsub;
     }
 
-    // --- Helper: Generate Dummy Posts untuk Scrollable View ---
+    // --- (BARU) LISTEN REAL-TIME CHAT GLOBAL ---
+    function listenGlobalChat() {
+        // Ambil 50 pesan terakhir, urutkan dari yang terlama
+        const q = query(collection(db, "globalChat"), orderBy("createdAt", "asc"), limitToLast(50));
+        
+        const unsub = onSnapshot(q, (snapshot) => {
+            chatMessageList.innerHTML = ""; // Hapus semua pesan dan render ulang
+            
+            if (snapshot.empty) {
+                chatMessageList.innerHTML = `<p class="text-center text-gray-500 mt-4">Belum ada pesan. Mulai obrolan!</p>`;
+                return;
+            }
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const isOwnMessage = auth.currentUser && data.userId === auth.currentUser.uid;
+                
+                const container = document.createElement('div');
+                container.className = 'chat-message-container';
+                
+                if (isOwnMessage) {
+                    container.classList.add('sent');
+                    container.innerHTML = `
+                        <div class="chat-bubble sent">
+                            ${escapeHtml(data.text)}
+                        </div>
+                    `;
+                } else {
+                    container.classList.add('received');
+                    container.innerHTML = `
+                        <p class="chat-sender-name">${escapeHtml(data.userName)}</p>
+                        <div class="chat-bubble received">
+                            ${escapeHtml(data.text)}
+                        </div>
+                    `;
+                }
+                chatMessageList.appendChild(container);
+            });
+
+            // (PENTING) Auto-scroll ke pesan terbaru
+            chatMessageList.scrollTop = chatMessageList.scrollHeight;
+        }, (err) => {
+            console.error("Listen chat error:", err);
+        });
+        return unsub;
+    }
+
+
+    // --- Helper: Generate Dummy Posts ---
     function generateDummyPosts() {
         const dummyData = [
             { name: "Sistem", text: "Curhatanmu akan muncul di sini. Coba buat postingan pertamamu!", time: "Sekarang", location: { name: "Jeneponto", detail: "Sulawesi Selatan" } },
             { name: "Pengguna Anonim", text: "Halaman ini sudah bisa di-scroll ke bawah dan ke atas. Gulir terus untuk melihat postingan lama!", time: "1 jam lalu" },
             { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "2 hari lalu", feeling: { emoji: '😊', text: 'senang', type: 'feeling'} },
             { name: "Budi", text: "Semoga aplikasinya ramai ya! Saya senang dengan tampilan barunya. Sangat responsif di ponsel.", time: "2 hari lalu" },
-            { name: "Dewi", text: "Hari ini cuaca cerah sekali, mood jadi bagus! ✨", time: "3 hari lalu", location: { name: "Makassar", detail: "Kota Angin Mamiri" } },
-            { name: "Placeholder", text: "Curhatan ke-6: Apakah saya sudah bisa melihat scroll bar? Ya, sudah! 👍", time: "4 hari lalu" },
-            { name: "Tes Scroll", text: "Coba lagi gulir ke bawah. Apakah ada konten tambahan? Tentu!", time: "5 hari lalu" },
-            { name: "Scroll Test", text: "Ini adalah postingan terakhir untuk menguji kemampuan gulir. Semoga berfungsi dengan baik!", time: "6 hari lalu" }
         ];
-
         return dummyData.map(data => {
             const locationDisplay = data.location 
-              ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${data.location.name}</a>`
-              : '';
-              
+              ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${data.location.name}</a>` : '';
             let feelingDisplay = '';
             if (data.feeling) {
                 const actionText = data.feeling.type === 'feeling' ? 'merasa' : 'sedang';
                 feelingDisplay = ` ${escapeHtml(data.feeling.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(data.feeling.text)}.</span>`;
             }
-            
             const mapPlaceholder = data.location 
               ? `
                 <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative opacity-50">
                     <div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300">
                         <div class="p-4">
                             <svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
-                            <p class="text-sm font-medium">${data.location.name}</p>
-                            <p class="text-xs">${data.location.detail}</p>
                         </div>
                     </div>
                 </div>
             ` : '';
-
             return `
                 <div class="post-card mb-3 shadow-md opacity-80">
                     <div class="p-4">
                         <div class="flex items-center mb-3">
                             <div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-lg mr-2">${data.name[0]}</div>
                             <div class="flex-grow">
-                                <p class="font-semibold text-gray-900">${data.name}
-                                    ${feelingDisplay}
-                                    ${locationDisplay}
-                                </p>
+                                <p class="font-semibold text-gray-900">${data.name} ${feelingDisplay} ${locationDisplay}</p>
                                 <p class="text-xs text-gray-500">${data.time} · Dummy</p>
                             </div>
                         </div>
                         <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${data.text}</p>
                         ${mapPlaceholder}
                         <div class="flex justify-around border-t border-gray-200 mt-4 pt-2 text-gray-400">
-                            <button class="p-2">Suka</button>
-                            <button class="p-2">Komentar</button>
-                            <button class="p-2">Bagikan</button>
+                            <button class="p-2">Suka</button> <button class="p-2">Komentar</button> <button class="p-2">Bagikan</button>
                         </div>
                     </div>
                 </div>
@@ -752,7 +815,7 @@
   
   
 
-<div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[2000]">
+<div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[5000]">
       <div class="bg-white p-6 rounded-xl shadow-2xl w-11/12 max-w-xs text-center">
           <h4 id="messageTitle" class="text-xl font-bold mb-3 text-red-600">Pesan</h4>
           <p id="messageContent" class="text-gray-700 mb-4"></p>
@@ -782,47 +845,30 @@
 
 <div id="authView" class="hidden min-h-screen flex items-center justify-center bg-white p-4">
     <div class="w-full max-w-md">
-      
-
-<div class="text-center mb-10">
+      <div class="text-center mb-10">
         <svg class="mx-auto" fill="#1877F2" viewBox="0 0 24 24" width="48px" height="48px"><path d="M12 2C6.477 2 2 6.477 2 12c0 5.016 3.655 9.182 8.437 9.879V14.92h-2.92v-2.92h2.92V9.69c0-2.887 1.761-4.47 4.33-4.47.828 0 1.54.062 1.748.09V7.89h-1.571c-1.39 0-1.66.66-1.66 1.63V11.8h3.284l-.527 2.92h-2.757v6.959C18.345 21.182 22 17.016 22 12c0-5.523-4.477-10-10-10z"/></svg>
       </div>
-
-      
 
 <div id="loginCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
         <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Masuk ke Tempat Curhat</h3>
         <form id="loginForm" class="space-y-4">
-          <input type="email" name="email" placeholder="Email" required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue"
-          >
-          <input type="password" name="password" placeholder="Kata Sandi" required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue"
-          >
+          <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
+          <input type="password" name="password" placeholder="Kata Sandi" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
           <button class="w-full bg-fb-blue hover:bg-opacity-90 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
             Login
           </button>
         </form>
-        <p class="text-center mt-4 text-sm">
-            <a href="#" class="text-fb-blue hover:underline">Lupa kata sandi?</a>
-        </p>
+        <p class="text-center mt-4 text-sm"><a href="#" class="text-fb-blue hover:underline">Lupa kata sandi?</a></p>
         <div class="border-t border-gray-200 my-6"></div>
         <button id="authSwitchToRegister" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-150">
           Buat Akun Baru
         </button>
       </div>
-      
-      
-
 <div id="registerCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
         <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Daftar Akun Baru</h3>
         <form id="registerForm" class="space-y-4">
-          <input type="email" name="email" placeholder="Email baru" required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue"
-          >
-          <input type="password" name="password" placeholder="Password baru" required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue"
-          >
+          <input type="email" name="email" placeholder="Email baru" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
+          <input type="password" name="password" placeholder="Password baru" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
           <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
             Daftar
           </button>
@@ -839,8 +885,6 @@
 
 <div id="mainView" class="hidden pt-24 min-h-screen"> 
     
-    
-
 <nav class="fixed top-0 left-0 right-0 bg-white shadow-md z-10">
       <div class="flex items-center justify-between max-w-xl mx-auto p-3">
         <h1 class="text-2xl font-extrabold text-fb-blue">CurhatApp</h1>
@@ -851,10 +895,9 @@
         </div>
       </div>
       
-
-<div class="flex justify-around border-t border-gray-200 text-gray-500">
-        <div class="p-3 text-fb-blue border-b-2 border-fb-blue font-semibold">Feed Curhat</div>
-        <div class="p-3 hover:bg-gray-100 transition duration-150">Notifikasi</div>
+      <div class="flex justify-around border-t border-gray-200 text-gray-500">
+        <div class="p-3 text-fb-blue border-b-2 border-fb-blue font-semibold w-full text-center">Feed Curhat</div>
+        <button id="goToChatBtn" class="p-3 hover:bg-gray-100 transition duration-150 w-full text-center">Pesan Global</button>
       </div>
     </nav>
 
@@ -862,8 +905,6 @@
 
 <div class="max-w-xl mx-auto px-3 pt-3 pb-10"> 
         
-        
-
 <div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
             <div class="flex items-center space-x-2">
                 <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
@@ -884,9 +925,6 @@
                 </div>
             </div>
         </div>
-
-        
-
 <div id="curhatList">
           <p class="text-center text-gray-500 mt-10">Memuat curhatan...</p>
         </div>
@@ -898,7 +936,6 @@
 
 <div id="postView" class="hidden fixed inset-0 flex flex-col bg-white z-20">
     
-
 <header class="flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
         <button id="postFormBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -908,9 +945,6 @@
             POSTING
         </button>
     </header>
-
-    
-
 <div class="flex-grow p-4 overflow-y-auto">
         <div class="flex items-center mb-6">
             <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
@@ -932,11 +966,7 @@
               class="flex-grow text-xl p-0 border-none resize-none focus:ring-0 focus:border-transparent"
             ></textarea>
         </form>
-        
     </div>
-
-    
-
 <div id="locationSelectionBar" class="hidden absolute bottom-20 left-4 right-4 bg-white p-3 rounded-xl shadow-lg border border-gray-200 flex items-center justify-between">
         <div class="flex items-center">
             <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -946,21 +976,16 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
     </div>
-
-    
-
 <div class="border-t border-gray-200 p-4">
         <div class="space-y-4">
             <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
                 <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 Foto/Video
             </div>
-            
             <button id="openLocationModalBtn" class="w-full flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150 text-left">
                 <svg class="w-6 h-6 mr-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 Tambahkan lokasi
             </button>
-
             <button id="openFeelingModalBtn" class="w-full flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150 text-left">
                 <svg class="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Perasaan/aktivitas
@@ -982,9 +1007,6 @@
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
           </button>
       </header>
-      
-      
-
 <div class="p-4 border-b border-gray-200">
           <div class="flex items-center bg-gray-100 rounded-full p-2">
               <input id="locationSearchInput" type="text" placeholder="Cari"
@@ -993,13 +1015,9 @@
               <svg class="w-6 h-6 text-gray-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
       </div>
-
-      
-
 <div class="flex-grow overflow-y-auto">
           <h3 class="text-lg font-semibold text-gray-700 p-4 border-b border-gray-200">Saran</h3>
-          <div id="locationList">
-              </div>
+          <div id="locationList"></div>
       </div>
   </div>
 
@@ -1015,8 +1033,7 @@
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
           </button>
       </header>
-      
-      <div class="flex border-b border-gray-200">
+<div class="flex border-b border-gray-200">
           <button id="feelingTabPerasaan" class="feeling-tab flex-1 p-4 font-semibold text-gray-600 border-b-2 border-transparent hover:bg-gray-50 active">
               Perasaan
           </button>
@@ -1024,8 +1041,7 @@
               Aktivitas
           </button>
       </div>
-
-      <div class="p-4 border-b border-gray-200">
+<div class="p-4 border-b border-gray-200">
           <div class="flex items-center bg-gray-100 rounded-full p-2">
               <input id="feelingSearchInput" type="text" placeholder="Cari..."
                   class="flex-grow bg-transparent border-none focus:ring-0 focus:border-transparent p-0 text-lg"
@@ -1033,11 +1049,35 @@
               <svg class="w-6 h-6 text-gray-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
       </div>
-
-      <div class="flex-grow overflow-y-auto">
-          <div id="feelingList">
-              </div>
+<div class="flex-grow overflow-y-auto">
+          <div id="feelingList"></div>
       </div>
+  </div>
+
+
+  <div id="chatView" class="hidden"> <header class="flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
+          <button id="chatBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900">Chat Global (GC)</h2>
+          <button class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </button>
+      </header>
+
+      <div id="chatMessageList" class="flex-grow overflow-y-auto bg-white">
+          </div>
+
+      <footer class="p-3 border-t border-gray-200 bg-white">
+          <form id="chatForm" class="flex items-center gap-2">
+              <input id="chatTextInput" type="text" placeholder="Tulis pesan..." required
+                  class="flex-grow px-4 py-2 text-sm border-gray-300 bg-fb-gray rounded-full focus:ring-0 focus:border-fb-blue"
+              />
+              <button type="submit" class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
+                  <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+              </button>
+          </form>
+      </footer>
   </div>
 
 </body>
