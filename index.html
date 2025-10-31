@@ -66,14 +66,16 @@
     }
 
     /* Styling khusus untuk modal agar tetap di tengah */
-    #profileModal, #locationModal { 
+    #initialProfileModal, #locationModal { 
       display:none; 
       position:fixed; 
       inset:0; 
-      background: rgba(0,0,0,0.5); 
       align-items:center; 
       justify-content:center; 
-      z-index:1000; 
+    }
+    #initialProfileModal {
+        background: rgba(0,0,0,0.5); 
+        z-index:1000;
     }
     #locationModal {
         /* Modal lokasi harus menutupi seluruh layar seperti aplikasi */
@@ -85,12 +87,39 @@
         z-index: 2000; /* Lebih tinggi dari postView */
     }
 
+    /* Modal Profil (Full Screen) */
+    #userProfileModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: white;
+      z-index: 2000;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
     /* KARTU POSTING (untuk konsistensi tampilan seperti gambar) */
     .post-card {
         background-color: white;
         border-radius: 12px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         margin-bottom: 12px;
+    }
+
+    /* Styling untuk Profile Picture di Feed */
+    .profile-avatar-container {
+        position: relative;
+        cursor: pointer;
+    }
+    .profile-status-dot {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 10px;
+        height: 10px;
+        background-color: #4CAF50; /* Green dot for status online */
+        border-radius: 50%;
+        border: 2px solid white;
     }
   </style>
 
@@ -118,8 +147,7 @@
     const db = getFirestore(app);
 
     // --- State Aplikasi ---
-    let currentPage = 'Auth'; // Bisa 'Auth', 'Main', atau 'Post'
-    // State baru untuk Lokasi
+    let currentPage = 'Auth'; // Bisa 'Auth', 'Main', 'Post', 'Profile'
     let selectedLocation = null; // {name: "Nama Lokasi", detail: "Detail Lokasi"}
     
     // --- Data Lokasi Dummy ---
@@ -138,23 +166,20 @@
     const authView = document.getElementById("authView");
     const mainView = document.getElementById("mainView");
     const postView = document.getElementById("postView");
-    const loginForm = document.getElementById("loginForm");
-    const registerForm = document.getElementById("registerForm");
-    const curhatForm = document.getElementById("curhatForm");
-    const curhatList = document.getElementById("curhatList");
-    const userStatusDisplay = document.getElementById("userStatusDisplay");
-    const profileModal = document.getElementById("profileModal");
+    const locationModal = document.getElementById("locationModal");
+    const initialProfileModal = document.getElementById("initialProfileModal"); // Modal buat atur nama
     const profileForm = document.getElementById("profileForm");
     const profileNameInput = document.getElementById("profileName");
-    const postFormBackBtn = document.getElementById("postFormBackBtn");
+    const curhatList = document.getElementById("curhatList");
+    const userStatusDisplay = document.getElementById("userStatusDisplay"); // Nama di Nav Bar
     const postUsernameDisplay = document.getElementById("postUsernameDisplay");
 
-    // Elemen Lokasi Baru
-    const locationModal = document.getElementById("locationModal");
-    const locationList = document.getElementById("locationList");
-    const locationSearchInput = document.getElementById("locationSearchInput");
-    const locationSelectionBar = document.getElementById("locationSelectionBar");
-    const locationBarText = document.getElementById("locationBarText");
+    // Elemen Profil Baru
+    const userProfileModal = document.getElementById("userProfileModal");
+    const profileModalName = document.getElementById("profileModalName");
+    const profileModalFriendsCount = document.getElementById("profileModalFriendsCount");
+    const profileModalBio = document.getElementById("profileModalBio");
+
 
     // --- Fungsi Navigasi Halaman ---
     function navigateTo(page) {
@@ -162,7 +187,9 @@
       authView.style.display = 'none';
       mainView.style.display = 'none';
       postView.style.display = 'none';
-      locationModal.style.display = 'none'; // Pastikan modal lokasi tertutup
+      locationModal.style.display = 'none'; 
+      initialProfileModal.style.display = 'none'; // Modal nama awal
+      userProfileModal.style.display = 'none'; // Modal profil lengkap
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -170,18 +197,20 @@
         mainView.style.display = 'block';
       } else if (page === 'Post') {
         postView.style.display = 'flex';
-        renderLocationBar(); // Panggil saat masuk ke Post view
+        renderLocationBar(); 
+      } else if (page === 'Profile') {
+        userProfileModal.style.display = 'flex';
+        renderProfileModal();
       }
     }
 
     // --- EVENT LISTENERS UI ---
     document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
     document.getElementById('goToPostBtn').addEventListener('click', () => {
-        // Reset lokasi saat memulai post baru
         selectedLocation = null;
         navigateTo('Post');
     });
-    postFormBackBtn.addEventListener('click', () => navigateTo('Main'));
+    document.getElementById('postFormBackBtn').addEventListener('click', () => navigateTo('Main'));
     document.getElementById('authSwitchToRegister').addEventListener('click', () => {
       document.getElementById('loginCard').style.display = 'none';
       document.getElementById('registerCard').style.display = 'block';
@@ -191,13 +220,13 @@
       document.getElementById('loginCard').style.display = 'block';
     });
 
-    // Buka Modal Lokasi saat tombol "Tambahkan lokasi" di Post View ditekan
+    // Buka Modal Lokasi
     document.getElementById('openLocationModalBtn').addEventListener('click', () => {
       renderLocationList(DUMMY_LOCATIONS);
       locationModal.style.display = 'flex';
     });
 
-    // Tombol kembali di Modal Lokasi
+    // Tutup Modal Lokasi
     document.getElementById('locationModalBackBtn').addEventListener('click', () => {
       locationModal.style.display = 'none';
     });
@@ -209,7 +238,7 @@
     });
 
     // Filter Lokasi
-    locationSearchInput.addEventListener('input', (e) => {
+    document.getElementById('locationSearchInput').addEventListener('input', (e) => {
       const searchTerm = e.target.value.toLowerCase();
       const filtered = DUMMY_LOCATIONS.filter(loc => 
         loc.name.toLowerCase().includes(searchTerm) || 
@@ -218,23 +247,63 @@
       renderLocationList(filtered);
     });
 
-    // --- Fungsi Render dan Logika Lokasi ---
+    // Buka Modal Profil Penuh saat klik foto profil di MainView
+    document.getElementById('profileAvatarContainer').addEventListener('click', () => {
+        navigateTo('Profile');
+    });
+
+    // Tutup Modal Profil Penuh
+    document.getElementById('profileModalBackBtn').addEventListener('click', () => {
+        navigateTo('Main');
+    });
+
+    // --- Fungsi Render dan Logika Profil Penuh ---
+    function renderProfileModal() {
+        const user = auth.currentUser;
+        if (!user || !user.displayName) return;
+        
+        const displayName = user.displayName;
+        const shortName = displayName.split(' ')[0];
+
+        // Memuat data dummy
+        const friendsCount = "2 rb";
+        const bio = "- Beberapa hal gak perlu dibuktikan cukup dirasakan";
+        const profileImageUrl = "https://placehold.co/100x100/1877F2/ffffff?text=P"; // Placeholder Avatar
+        const coverImageUrl = "https://placehold.co/600x200/3A3B3C/ffffff?text=Cover+Dummy"; // Placeholder Cover
+
+        // Update DOM
+        profileModalName.textContent = displayName + " ('" + shortName.toLowerCase() + "')"; // Menambahkan format (a'sryn)
+        profileModalFriendsCount.textContent = friendsCount + " teman";
+        profileModalBio.textContent = bio;
+        
+        // Update Avatar dan Cover
+        document.getElementById('profileCoverImage').style.backgroundImage = `url(${coverImageUrl})`;
+        document.getElementById('profilePictureLarge').src = profileImageUrl;
+        
+        // Update nama di header modal
+        document.getElementById('profileModalHeaderName').textContent = displayName;
+        
+        // Kita juga bisa menampilkan post pengguna di sini (tapi untuk sekarang fokus tampilan)
+        // Cek bagian postUserList di HTML
+    }
+    
+    // --- Fungsi Render dan Logika Lokasi (dari langkah sebelumnya) ---
 
     // Menampilkan bar lokasi di bawah textarea posting
     function renderLocationBar() {
       if (selectedLocation) {
-        locationBarText.textContent = selectedLocation.name;
-        locationSelectionBar.classList.remove('hidden');
+        document.getElementById('locationBarText').textContent = selectedLocation.name;
+        document.getElementById('locationSelectionBar').classList.remove('hidden');
       } else {
-        locationSelectionBar.classList.add('hidden');
+        document.getElementById('locationSelectionBar').classList.add('hidden');
       }
     }
 
     // Menampilkan daftar lokasi di modal
     function renderLocationList(locations) {
-      locationList.innerHTML = '';
+      document.getElementById('locationList').innerHTML = '';
       if (locations.length === 0) {
-        locationList.innerHTML = `<p class="text-center text-gray-500 mt-4">Tidak ada lokasi ditemukan.</p>`;
+        document.getElementById('locationList').innerHTML = `<p class="text-center text-gray-500 mt-4">Tidak ada lokasi ditemukan.</p>`;
         return;
       }
       locations.forEach(loc => {
@@ -252,32 +321,32 @@
           locationModal.style.display = 'none';
           navigateTo('Post'); // Kembali ke post view
         });
-        locationList.appendChild(item);
+        document.getElementById('locationList').appendChild(item);
       });
     }
 
     // --- Bagian Auth, Profile, dan Firestore (Logika inti tidak diubah) ---
     
-    registerForm.addEventListener("submit", async (e) => {
+    document.getElementById('registerForm').addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = e.target.email.value;
       const pass = e.target.password.value;
       try {
         await createUserWithEmailAndPassword(auth, email, pass);
-        registerForm.reset();
+        e.target.reset();
       } catch (err) {
         console.error("Gagal daftar:", err);
         showModalMessage("Gagal daftar", err.message);
       }
     });
 
-    loginForm.addEventListener("submit", async (e) => {
+    document.getElementById('loginForm').addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = e.target.email.value;
       const pass = e.target.password.value;
       try {
         await signInWithEmailAndPassword(auth, email, pass);
-        loginForm.reset();
+        e.target.reset();
       } catch (err) {
         console.error("Gagal login:", err);
         showModalMessage("Gagal masuk", err.message);
@@ -301,7 +370,7 @@
       if (!name) return showModalMessage("Perhatian", "Nama tidak boleh kosong");
       try {
         await saveProfileName(name);
-        profileModal.style.display = "none";
+        initialProfileModal.style.display = "none";
         navigateTo('Main');
       } catch (err) {
         console.error("Gagal simpan nama:", err);
@@ -318,27 +387,32 @@
 
       if (user) {
         const displayName = user.displayName || user.email;
-        userStatusDisplay.textContent = displayName;
+        userStatusDisplay.textContent = displayName[0]; // Hanya inisial
+        document.getElementById('userStatusNameDisplay').textContent = displayName;
         postUsernameDisplay.textContent = displayName; 
         
         if (!user.displayName) {
-          profileModal.style.display = "flex";
+          initialProfileModal.style.display = "flex";
           navigateTo('Auth'); 
           return;
         }
 
-        profileModal.style.display = "none";
-        navigateTo('Main');
+        initialProfileModal.style.display = "none";
+        // Hanya navigasi ke Main jika tidak ada modal lain yang terbuka (misal Profile)
+        if (currentPage !== 'Profile') {
+            navigateTo('Main');
+        }
 
         unsubscribeCurhatListener = listenCurhatan();
       } else {
-        userStatusDisplay.textContent = "Guest";
+        document.getElementById('userStatusNameDisplay').textContent = "Guest";
+        userStatusDisplay.textContent = "G";
         navigateTo('Auth');
       }
     });
 
-    // --- POST CURHATAN (Menambahkan data lokasi ke Firestore) ---
-    curhatForm.addEventListener("submit", async (e) => {
+    // --- POST CURHATAN ---
+    document.getElementById('curhatForm').addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = e.target.text.value.trim();
       if (!text) return;
@@ -354,15 +428,14 @@
         comments: []
       };
 
-      // Tambahkan lokasi jika sudah dipilih
       if (selectedLocation) {
           postData.location = selectedLocation;
       }
 
       try {
         await addDoc(collection(db, "curhatan"), postData);
-        curhatForm.reset();
-        selectedLocation = null; // Reset lokasi setelah post
+        e.target.reset();
+        selectedLocation = null; 
         navigateTo('Main'); 
       } catch (err) {
         console.error("Gagal posting:", err);
@@ -370,7 +443,7 @@
       }
     });
 
-    // --- LISTEN REAL-TIME CURHATAN (Memperbarui tampilan lokasi) ---
+    // --- LISTEN REAL-TIME CURHATAN ---
     function listenCurhatan() {
       const q = query(collection(db, "curhatan"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(q, (snapshot) => {
@@ -395,13 +468,11 @@
           const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
           const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
           
-          // Tentukan apakah ada lokasi
           const locationData = data.location;
           const locationDisplay = locationData 
               ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a>`
               : '';
               
-          // Tentukan tampilan Map Placeholder jika ada lokasi (sesuai gambar)
           const mapPlaceholder = locationData 
               ? `
                 <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">
@@ -487,14 +558,12 @@
             </div>
           `;
           
-          // Toggle Komentar
           const commentToggleBtn = div.querySelector(".comment-toggle");
           const commentsArea = div.querySelector(".comments-area");
           commentToggleBtn.addEventListener('click', () => {
             commentsArea.classList.toggle('hidden');
           });
 
-          // Form Komentar Logic
           const form = div.querySelector(".commentForm");
           form.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -618,7 +687,7 @@
 
   
 
-<div id="profileModal" class="hidden">
+<div id="initialProfileModal" class="hidden">
     <div class="box bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm text-center">
       <h3 class="text-2xl font-extrabold text-fb-blue mb-2">Selamat datang! 👋</h3>
       <p class="text-gray-600 mb-6">Tolong isi nama profil yang ingin kamu gunakan.</p>
@@ -722,8 +791,11 @@
 
 <div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
             <div class="flex items-center space-x-2">
-                <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
-                    <span id="userStatusDisplay" class="font-semibold text-white">?</span>
+                <div id="profileAvatarContainer" class="profile-avatar-container w-10 h-10">
+                    <div class="w-full h-full rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
+                        <span id="userStatusDisplay" class="font-semibold text-white">?</span>
+                    </div>
+                    <span class="profile-status-dot"></span>
                 </div>
                 <button id="goToPostBtn" class="flex-grow text-left bg-fb-gray p-2.5 rounded-full text-gray-600 hover:bg-gray-200 transition duration-150">
                     Apa yang Anda pikirkan?
@@ -857,6 +929,103 @@
           <div id="locationList">
               <!-- Daftar Lokasi akan di-inject di sini oleh JavaScript -->
           </div>
+      </div>
+  </div>
+
+
+  
+
+<div id="userProfileModal" class="flex-col bg-white">
+      
+      
+
+<header class="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200 shadow-sm sticky top-0 bg-white z-10">
+          <button id="profileModalBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 id="profileModalHeaderName" class="text-xl font-bold text-gray-900">Nama Pengguna</h2>
+          <div class="flex space-x-2">
+              <button class="text-gray-700 p-1 hover:bg-gray-100 rounded-full">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </button>
+              <button class="text-gray-700 p-1 hover:bg-gray-100 rounded-full">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg>
+              </button>
+          </div>
+      </header>
+      
+      
+
+<div class="flex-grow overflow-y-auto">
+          
+          
+
+<div class="p-4">
+              
+              
+
+<div id="profileCoverImage" class="h-40 bg-gray-300 rounded-lg bg-cover bg-center relative mb-[-60px]" 
+                  style="background-image: url('https://placehold.co/600x200/3A3B3C/ffffff?text=Cover+Dummy')">
+                  <button class="absolute bottom-2 right-2 bg-black bg-opacity-50 p-2 rounded-full text-white">
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.218A2 2 0 0110.153 4h3.694a2 2 0 011.664.89l.812 1.218A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  </button>
+              </div>
+
+              
+              <div class="flex items-end mb-4">
+                  <div class="relative w-36 h-36 border-4 border-white rounded-full bg-white shadow-lg">
+                      <img id="profilePictureLarge" src="https://placehold.co/100x100/1877F2/ffffff?text=P" alt="Profile Picture" class="w-full h-full rounded-full object-cover">
+                      <button class="absolute bottom-1 right-1 bg-gray-700 p-2 rounded-full text-white">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.218A2 2 0 0110.153 4h3.694a2 2 0 011.664.89l.812 1.218A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                      </button>
+                  </div>
+                  
+                  
+
+<div class="ml-4 flex-grow relative -top-3">
+                      <div class="bg-gray-800 text-white rounded-full px-4 py-2 text-sm max-w-max">Bagikan catatan...</div>
+                  </div>
+              </div>
+
+              
+              <h1 id="profileModalName" class="text-3xl font-extrabold text-gray-900 mt-2">Juan Sryn'x (a'sryn)</h1>
+              <p id="profileModalFriendsCount" class="text-base text-gray-500 mb-2">2 rb teman</p>
+              <p id="profileModalBio" class="text-lg text-gray-700 mb-4 font-medium">- Beberapa hal gak perlu dibuktikan cukup dirasakan</p>
+
+              
+              <div class="flex space-x-2 border-b border-gray-200 pb-4 mb-4">
+                  <button class="flex-1 bg-fb-blue hover:bg-opacity-80 text-white font-semibold py-2 rounded-lg flex items-center justify-center transition duration-150 shadow-md">
+                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      Tambahkan ke cerita
+                  </button>
+                  <button class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg flex items-center justify-center transition duration-150">
+                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                      Edit profil
+                  </button>
+                  <button class="p-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition duration-150">
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg>
+                  </button>
+              </div>
+
+              
+              <div class="flex justify-around text-gray-600 font-semibold border-b border-gray-200">
+                  <div class="py-3 text-fb-blue border-b-2 border-fb-blue">Postingan</div>
+                  <div class="py-3 hover:text-gray-900">Foto</div>
+                  <div class="py-3 hover:text-gray-900">Reels</div>
+                  <div class="py-3 hover:text-gray-900">Lainnya</div>
+              </div>
+          </div>
+
+          
+
+<div id="postUserList" class="p-4 bg-fb-gray min-h-[50vh]">
+              <!-- Di sini akan tampil daftar postingan pengguna, untuk saat ini dummy -->
+              <div class="text-center p-6 text-gray-500">
+                  <p class="font-semibold">Tidak ada postingan yang dapat ditampilkan.</p>
+                  <p class="text-sm">Posting pertamamu akan muncul di sini.</p>
+              </div>
+          </div>
+
       </div>
   </div>
 
