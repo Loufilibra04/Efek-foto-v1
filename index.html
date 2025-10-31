@@ -1,542 +1,613 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CurhatApp - Real-time Feed</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
-        .post-card { background-color: white; border-radius: 12px; }
-        #profileModal, #locationModal { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.4); z-index: 1000; align-items: center; justify-content: center; }
-        #locationModal { display: none; } /* Hanya tampilkan saat dipanggil JS */
-        #profileModal .box { max-height: 90vh; }
-        .text-fb-blue { color: #1877F2; }
-        .bg-fb-blue { background-color: #1877F2; }
-        .bg-fb-gray { background-color: #f0f2f5; }
-        /* Mengatur posisi postView agar fixed di atas main view */
-        #postView {
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tempat Curhat 💬</title>
 
-    <script type="module">
-        // --- Firebase Imports dan Konfigurasi ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInAnonymously, 
-            signInWithCustomToken, 
-            onAuthStateChanged, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword,
-            signOut
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            doc, 
-            setDoc, 
-            onSnapshot, 
-            collection, 
-            query, 
-            addDoc,
-            serverTimestamp,
-            getDocs,
-            getDoc,
-            orderBy,
-            limit
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+  
+
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'fb-blue': '#1877F2',
+            'fb-gray': '#F0F2F5',
+            'fb-dark': '#3A3B3C',
+            'fb-dark-bg': '#18191A',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Mengatur body default agar sesuai dengan mode terang (light mode) */
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background-color: #F0F2F5; /* fb-gray */
+      transition: background-color 0.3s;
+      /* Memastikan body bisa digulir */
+      min-height: 100vh;
+      overflow-y: auto; 
+    }
+
+    /* Mengganti warna scrollbar untuk estetika */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+    
+    /* Input dan Button default styling (overridden by Tailwind classes) */
+    input[type="text"], input[type="email"], input[type="password"], textarea { 
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        width: 100%;
+        font-size: 16px;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    input:focus, textarea:focus {
+        outline: none;
+        border-color: #1877F2;
+        box-shadow: 0 0 0 1px #1877F2;
+    }
+
+    /* Styling khusus untuk modal agar tetap di tengah */
+    #profileModal, #locationModal { 
+      display:none; 
+      position:fixed; 
+      inset:0; 
+      background: rgba(0,0,0,0.5); 
+      align-items:center; 
+      justify-content:center; 
+      z-index:1000; 
+    }
+    #locationModal {
+        /* Modal lokasi harus menutupi seluruh layar seperti aplikasi */
+        background: #fff;
+        display: none; 
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        z-index: 2000; /* Lebih tinggi dari postView */
+    }
+
+    /* KARTU POSTING (untuk konsistensi tampilan seperti gambar) */
+    .post-card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        margin-bottom: 12px;
+    }
+  </style>
+
+  <script type="module">
+    // --- Variabel Global Canvas ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDqatY8EgkSDgOp799xdb1TqwdCwoda-7I",
+      authDomain: "curhatan-959ee.firebaseapp.com",
+      projectId: "curhatan-959ee",
+      storageBucket: "curhatan-959ee.appspot.com",
+      messagingSenderId: "111804283269",
+      appId: "1:111804283269:web:da799747d37787f2ae6cec",
+      measurementId: "G-4Q1V1J0800"
+    };
+
+    // --- Firebase SDK (CDN) ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // --- State Aplikasi ---
+    let currentPage = 'Auth'; // Bisa 'Auth', 'Main', atau 'Post'
+    // State baru untuk Lokasi
+    let selectedLocation = null; // {name: "Nama Lokasi", detail: "Detail Lokasi"}
+    
+    // --- Data Lokasi Dummy ---
+    const DUMMY_LOCATIONS = [
+      { name: "Pantai Bahari Jeneponto", detail: "Jeneponto · Jeneponto, South Sulawesi" },
+      { name: "Makassar", detail: "Kota Makassar, Sulawesi Selatan, ID" },
+      { name: "Nasara, Sulawesi Selatan, Indonesia", detail: "Nasara, South Sulawesi, ID" },
+      { name: "Bunia", detail: "Bunia, South Sulawesi, ID" },
+      { name: "Zona Nyaman", detail: "Kota Makassar, Sulawesi Selatan, ID" },
+      { name: "Kampung Beru Kec, bangkala Kab, jeneponto", detail: "Bangkala, South Sulawesi, ID" },
+      { name: "Desa Laikang", detail: "Jeneponto, South Sulawesi, ID" },
+    ];
+
+
+    // --- DOM Elements ---
+    const authView = document.getElementById("authView");
+    const mainView = document.getElementById("mainView");
+    const postView = document.getElementById("postView");
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const curhatForm = document.getElementById("curhatForm");
+    const curhatList = document.getElementById("curhatList");
+    const userStatusDisplay = document.getElementById("userStatusDisplay");
+    const profileModal = document.getElementById("profileModal");
+    const profileForm = document.getElementById("profileForm");
+    const profileNameInput = document.getElementById("profileName");
+    const postFormBackBtn = document.getElementById("postFormBackBtn");
+    const postUsernameDisplay = document.getElementById("postUsernameDisplay");
+
+    // Elemen Lokasi Baru
+    const locationModal = document.getElementById("locationModal");
+    const locationList = document.getElementById("locationList");
+    const locationSearchInput = document.getElementById("locationSearchInput");
+    const locationSelectionBar = document.getElementById("locationSelectionBar");
+    const locationBarText = document.getElementById("locationBarText");
+
+    // --- Fungsi Navigasi Halaman ---
+    function navigateTo(page) {
+      currentPage = page;
+      authView.style.display = 'none';
+      mainView.style.display = 'none';
+      postView.style.display = 'none';
+      locationModal.style.display = 'none'; // Pastikan modal lokasi tertutup
+
+      if (page === 'Auth') {
+        authView.style.display = 'block';
+      } else if (page === 'Main') {
+        mainView.style.display = 'block';
+      } else if (page === 'Post') {
+        postView.style.display = 'flex';
+        renderLocationBar(); // Panggil saat masuk ke Post view
+      }
+    }
+
+    // --- EVENT LISTENERS UI ---
+    document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+    document.getElementById('goToPostBtn').addEventListener('click', () => {
+        // Reset lokasi saat memulai post baru
+        selectedLocation = null;
+        navigateTo('Post');
+    });
+    postFormBackBtn.addEventListener('click', () => navigateTo('Main'));
+    document.getElementById('authSwitchToRegister').addEventListener('click', () => {
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('registerCard').style.display = 'block';
+    });
+    document.getElementById('authSwitchToLogin').addEventListener('click', () => {
+      document.getElementById('registerCard').style.display = 'none';
+      document.getElementById('loginCard').style.display = 'block';
+    });
+
+    // Buka Modal Lokasi saat tombol "Tambahkan lokasi" di Post View ditekan
+    document.getElementById('openLocationModalBtn').addEventListener('click', () => {
+      renderLocationList(DUMMY_LOCATIONS);
+      locationModal.style.display = 'flex';
+    });
+
+    // Tombol kembali di Modal Lokasi
+    document.getElementById('locationModalBackBtn').addEventListener('click', () => {
+      locationModal.style.display = 'none';
+    });
+
+    // Hapus Lokasi di Post View
+    document.getElementById('removeLocationBtn').addEventListener('click', () => {
+      selectedLocation = null;
+      renderLocationBar();
+    });
+
+    // Filter Lokasi
+    locationSearchInput.addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      const filtered = DUMMY_LOCATIONS.filter(loc => 
+        loc.name.toLowerCase().includes(searchTerm) || 
+        loc.detail.toLowerCase().includes(searchTerm)
+      );
+      renderLocationList(filtered);
+    });
+
+    // --- Fungsi Render dan Logika Lokasi ---
+
+    // Menampilkan bar lokasi di bawah textarea posting
+    function renderLocationBar() {
+      if (selectedLocation) {
+        locationBarText.textContent = selectedLocation.name;
+        locationSelectionBar.classList.remove('hidden');
+      } else {
+        locationSelectionBar.classList.add('hidden');
+      }
+    }
+
+    // Menampilkan daftar lokasi di modal
+    function renderLocationList(locations) {
+      locationList.innerHTML = '';
+      if (locations.length === 0) {
+        locationList.innerHTML = `<p class="text-center text-gray-500 mt-4">Tidak ada lokasi ditemukan.</p>`;
+        return;
+      }
+      locations.forEach(loc => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100';
+        item.innerHTML = `
+          <svg class="w-6 h-6 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          <div>
+            <p class="font-semibold text-gray-900">${escapeHtml(loc.name)}</p>
+            <p class="text-sm text-gray-500">${escapeHtml(loc.detail)}</p>
+          </div>
+        `;
+        item.addEventListener('click', () => {
+          selectedLocation = loc;
+          locationModal.style.display = 'none';
+          navigateTo('Post'); // Kembali ke post view
+        });
+        locationList.appendChild(item);
+      });
+    }
+
+    // --- Bagian Auth, Profile, dan Firestore (Logika inti tidak diubah) ---
+    
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const pass = e.target.password.value;
+      try {
+        await createUserWithEmailAndPassword(auth, email, pass);
+        registerForm.reset();
+      } catch (err) {
+        console.error("Gagal daftar:", err);
+        showModalMessage("Gagal daftar", err.message);
+      }
+    });
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = e.target.email.value;
+      const pass = e.target.password.value;
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        loginForm.reset();
+      } catch (err) {
+        console.error("Gagal login:", err);
+        showModalMessage("Gagal masuk", err.message);
+      }
+    });
+
+    async function saveProfileName(name) {
+      const user = auth.currentUser;
+      if (!user) return;
+      await updateProfile(user, { displayName: name });
+      await setDoc(doc(db, "users", user.uid), {
+        name,
+        email: user.email,
+        updatedAt: new Date()
+      });
+    }
+
+    profileForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = profileNameInput.value.trim();
+      if (!name) return showModalMessage("Perhatian", "Nama tidak boleh kosong");
+      try {
+        await saveProfileName(name);
+        profileModal.style.display = "none";
+        navigateTo('Main');
+      } catch (err) {
+        console.error("Gagal simpan nama:", err);
+        showModalMessage("Gagal simpan nama", err.message);
+      }
+    });
+
+    let unsubscribeCurhatListener = null;
+    onAuthStateChanged(auth, async (user) => {
+      if (unsubscribeCurhatListener) {
+        unsubscribeCurhatListener();
+        unsubscribeCurhatListener = null;
+      }
+
+      if (user) {
+        const displayName = user.displayName || user.email;
+        userStatusDisplay.textContent = displayName;
+        postUsernameDisplay.textContent = displayName; 
         
-        // --- Inisialisasi Firebase ---
-        setLogLevel('Debug');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-
-        let app;
-        let db;
-        let auth;
-        let currentUserId = null;
-        let currentUsername = null;
-        let selectedLocation = null; // State untuk lokasi postingan baru
-
-        // --- View Elements ---
-        const authView = document.getElementById('authView');
-        const mainView = document.getElementById('mainView');
-        const postView = document.getElementById('postView');
-        const profileModal = document.getElementById('profileModal');
-        const locationModal = document.getElementById('locationModal');
-        const curhatList = document.getElementById('curhatList');
-
-        const loginCard = document.getElementById('loginCard');
-        const registerCard = document.getElementById('registerCard');
-
-        // --- Fungsionalitas View Switching ---
-        function showView(viewId) {
-            authView.style.display = 'none';
-            mainView.style.display = 'none';
-            postView.style.display = 'none';
-            locationModal.style.display = 'none';
-
-            if (viewId === 'auth') {
-                authView.style.display = 'flex';
-            } else if (viewId === 'main') {
-                mainView.style.display = 'block';
-            } else if (viewId === 'post') {
-                postView.style.display = 'flex';
-                // Reset form saat masuk post view
-                document.getElementById('curhatForm').reset();
-                selectedLocation = null;
-                updateLocationBar();
-            } else if (viewId === 'location') {
-                locationModal.style.display = 'flex';
-            }
+        if (!user.displayName) {
+          profileModal.style.display = "flex";
+          navigateTo('Auth'); 
+          return;
         }
 
-        // --- State Management: Update Nama Pengguna di UI ---
-        function updateUsernameDisplay(username) {
-            const displays = document.querySelectorAll('#userStatusDisplay, #postUsernameDisplay');
-            const initial = username ? username[0].toUpperCase() : '?';
-            
-            displays.forEach(el => {
-                if (el.tagName === 'SPAN') {
-                    el.textContent = initial; // Initial di lingkaran
-                } else if (el.tagName === 'P' || el.tagName === 'DIV') {
-                    // Di Post View, P di dalam div
-                    el.textContent = username || 'Pengguna Anonim';
-                } else {
-                     // Di post form, update span
-                    el.textContent = username || 'Pengguna Anonim';
-                }
-            });
-        }
+        profileModal.style.display = "none";
+        navigateTo('Main');
 
-        // --- Database & State: Mengambil dan Mengelola Nama Profil ---
-        async function loadUserProfile() {
-            if (!currentUserId || !db) return;
+        unsubscribeCurhatListener = listenCurhatan();
+      } else {
+        userStatusDisplay.textContent = "Guest";
+        navigateTo('Auth');
+      }
+    });
 
-            try {
-                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'profile', 'data');
-                const docSnap = await getDoc(userDocRef);
+    // --- POST CURHATAN (Menambahkan data lokasi ke Firestore) ---
+    curhatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = e.target.text.value.trim();
+      if (!text) return;
+      const user = auth.currentUser;
+      if (!user) return showModalMessage("Kesalahan", "Harus login dulu");
+      const userName = user.displayName || user.email;
+      
+      const postData = {
+        text,
+        userId: user.uid,
+        userName,
+        createdAt: new Date(),
+        comments: []
+      };
 
-                if (docSnap.exists() && docSnap.data().username) {
-                    currentUsername = docSnap.data().username;
-                    updateUsernameDisplay(currentUsername);
-                    profileModal.style.display = 'none';
-                    showView('main');
-                } else {
-                    // Pengguna baru, tampilkan modal profil
-                    profileModal.style.display = 'flex';
-                }
-            } catch (error) {
-                console.error("Error loading user profile:", error);
-                showModalMessage('Error', 'Gagal memuat profil: ' + error.message);
-                profileModal.style.display = 'flex'; // Paksa tampilkan modal profil jika gagal
-            }
-        }
+      // Tambahkan lokasi jika sudah dipilih
+      if (selectedLocation) {
+          postData.location = selectedLocation;
+      }
 
-        // --- Authentication Listener ---
-        async function initAuth() {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
+      try {
+        await addDoc(collection(db, "curhatan"), postData);
+        curhatForm.reset();
+        selectedLocation = null; // Reset lokasi setelah post
+        navigateTo('Main'); 
+      } catch (err) {
+        console.error("Gagal posting:", err);
+        showModalMessage("Gagal posting", err.message);
+      }
+    });
 
-            // Coba login dengan custom token atau anonim
-            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-            
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (e) {
-                console.error("Initial sign-in failed:", e);
-                // Lanjut ke onAuthStateChanged, biarkan Auth View yang tampil jika gagal
-            }
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUserId = user.uid;
-                    // Cek apakah user telah menetapkan username
-                    loadUserProfile();
-                    // Mulai mendengarkan curhatan
-                    setupCurhatListener();
-                } else {
-                    currentUserId = null;
-                    currentUsername = null;
-                    updateUsernameDisplay(null);
-                    showView('auth');
-                }
-            });
-        }
+    // --- LISTEN REAL-TIME CURHATAN (Memperbarui tampilan lokasi) ---
+    function listenCurhatan() {
+      const q = query(collection(db, "curhatan"), orderBy("createdAt", "desc"));
+      const unsub = onSnapshot(q, (snapshot) => {
+        curhatList.innerHTML = "";
         
-        // --- Fungsi Utama: Mendengarkan Curhatan dari Firestore ---
-        function setupCurhatListener() {
-            const curhatsColRef = collection(db, 'artifacts', appId, 'public/data/curhats');
-            // Urutkan berdasarkan waktu posting terbaru
-            const q = query(curhatsColRef, orderBy("timestamp", "desc"), limit(50));
-
-            onSnapshot(q, (snapshot) => {
-                const postsHtml = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    postsHtml.push(renderPost(data, doc.id));
-                });
-
-                // Inject dummy posts (dari bagian 3) jika tidak ada data dari Firestore
-                if (postsHtml.length === 0) {
-                     curhatList.innerHTML = generateDummyPosts(); // Gunakan dummy jika kosong
-                } else {
-                    curhatList.innerHTML = postsHtml.join('');
-                }
-               
-            }, (error) => {
-                console.error("Error fetching curhats:", error);
-                curhatList.innerHTML = `<p class="text-center text-red-500 mt-10">Gagal memuat curhatan: ${error.message}</p>`;
-            });
+        if (snapshot.empty) {
+             curhatList.innerHTML = `
+                <p class="text-center text-gray-500 mt-10 mb-4">Belum ada curhatan. Ayo buat postingan pertamamu!</p>
+                ${generateDummyPosts()}
+            `;
+            curhatList.classList.add('pb-10');
+            return;
+        } else {
+            curhatList.classList.remove('pb-10');
         }
 
-        // --- Fungsi Rendering Post (Modifikasi dari generateDummyPosts) ---
-        function renderPost(data, postId) {
-            const name = escapeHtml(data.username || 'Pengguna Anonim');
-            const text = escapeHtml(data.text);
-            const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('id-ID', {
-                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-            }) : 'Baru saja';
-            const location = data.location;
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+
+          const displayName = data.userName || data.user || "Anon";
+          const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
+          const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
+          
+          // Tentukan apakah ada lokasi
+          const locationData = data.location;
+          const locationDisplay = locationData 
+              ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a>`
+              : '';
+              
+          // Tentukan tampilan Map Placeholder jika ada lokasi (sesuai gambar)
+          const mapPlaceholder = locationData 
+              ? `
+                <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">
+                    <!-- Map Placeholder (sesuai Screenshot_2025_1031_203803.png) -->
+                    <div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300">
+                        <div class="p-4">
+                            <svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+                            <p class="text-sm font-medium">${escapeHtml(locationData.name)}</p>
+                            <p class="text-xs">${escapeHtml(locationData.detail)}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <p class="text-xs font-semibold uppercase text-gray-500">${locationData.detail.split(' · ')[0]}</p>
+                    <p class="text-lg font-extrabold text-gray-900">${escapeHtml(locationData.name)}</p>
+                    <p class="text-sm text-gray-600 mt-1 flex items-center">
+                        <svg class="w-4 h-4 mr-1 text-fb-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-5a2 2 0 00-2-2h-3v5zM9 10a3 3 0 100-6 3 3 0 000 6zM10 19a1 1 0 00-1-1H6a1 1 0 00-1 1v1h5v-1z"></path></svg>
+                        Anda dan 1 teman pernah ke sini (Dummy)
+                    </p>
+                </div>
+            ` : '';
             
-            const locationDisplay = location 
-              ? ` di <a href="#" class="font-bold text-fb-blue hover:underline" title="${escapeHtml(location.detail || '')}">${escapeHtml(location.name)}</a>`
+
+          const div = document.createElement("div");
+          div.className = "post-card mb-3 shadow-md"; 
+          div.innerHTML = `
+            <div class="p-4">
+                <div class="flex items-center mb-3">
+                    <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${displayName[0]}</div>
+                    <div class="flex-grow">
+                        <p class="font-semibold text-gray-900">${escapeHtml(displayName)} 
+                            ${locationDisplay}
+                        </p>
+                        <p class="text-xs text-gray-500">${time} · Publik</p>
+                    </div>
+                    ${isOwnPost ? '<div class="text-xs text-fb-blue">Anda</div>' : ''}
+                </div>
+
+                <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
+                
+                ${mapPlaceholder}
+
+                <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
+                        Suka
+                    </button>
+                    <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        Komentar (${(data.comments || []).length})
+                    </button>
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
+                        Bagikan
+                    </button>
+                </div>
+            </div>
+
+            <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
+                <div class="comments space-y-3 mb-4">
+                  ${(data.comments || []).map(c => `
+                    <div class="flex items-start">
+                        <div class="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold mr-2">${c.userName ? c.userName[0] : 'A'}</div>
+                        <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
+                            <p class="font-semibold text-sm text-gray-800">${escapeHtml(c.userName || c.user)}</p>
+                            <p class="text-sm text-gray-700 break-words">${escapeHtml(c.text)}</p>
+                        </div>
+                    </div>
+                  `).join("")}
+                </div>
+                
+                <form class="commentForm flex gap-2 items-center">
+                    <div class="w-8 h-8 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-sm">
+                        ${auth.currentUser ? auth.currentUser.displayName[0] : 'A'}
+                    </div>
+                    <input type="text" placeholder="Tulis komentar..." required
+                        class="flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
+                    >
+                    <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m8 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                </form>
+            </div>
+          `;
+          
+          // Toggle Komentar
+          const commentToggleBtn = div.querySelector(".comment-toggle");
+          const commentsArea = div.querySelector(".comments-area");
+          commentToggleBtn.addEventListener('click', () => {
+            commentsArea.classList.toggle('hidden');
+          });
+
+          // Form Komentar Logic
+          const form = div.querySelector(".commentForm");
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const commentInput = e.target.querySelector('input[type="text"]');
+            const commentText = commentInput.value.trim();
+            if (!commentText) return;
+            const user = auth.currentUser;
+            if (!user) return showModalMessage("Kesalahan", "Harus login dulu untuk berkomentar!");
+            const commenterName = user.displayName || user.email;
+            try {
+              await updateDoc(doc(db, "curhatan", id), {
+                comments: arrayUnion({ userId: user.uid, userName: commenterName, text: commentText })
+              });
+              e.target.reset();
+            } catch (err) {
+              console.error("Gagal kirim komentar:", err);
+              showModalMessage("Gagal kirim komentar", err.message);
+            }
+          });
+          curhatList.appendChild(div);
+        });
+      }, (err) => {
+        console.error("Listen curhatan error:", err);
+      });
+      return unsub;
+    }
+
+    // --- Helper: Generate Dummy Posts untuk Scrollable View ---
+    function generateDummyPosts() {
+        const dummyData = [
+            { name: "Sistem", text: "Curhatanmu akan muncul di sini. Coba buat postingan pertamamu!", time: "Sekarang", location: { name: "Jeneponto", detail: "Sulawesi Selatan" } },
+            { name: "Pengguna Anonim", text: "Halaman ini sudah bisa di-scroll ke bawah dan ke atas. Gulir terus untuk melihat postingan lama!", time: "1 jam lalu" },
+            { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "1 hari lalu" },
+            { name: "Budi", text: "Semoga aplikasinya ramai ya! Saya senang dengan tampilan barunya. Sangat responsif di ponsel.", time: "2 hari lalu" },
+            { name: "Dewi", text: "Hari ini cuaca cerah sekali, mood jadi bagus! ✨", time: "3 hari lalu", location: { name: "Makassar", detail: "Kota Angin Mamiri" } },
+            { name: "Placeholder", text: "Curhatan ke-6: Apakah saya sudah bisa melihat scroll bar? Ya, sudah! 👍", time: "4 hari lalu" },
+            { name: "Tes Scroll", text: "Coba lagi gulir ke bawah. Apakah ada konten tambahan? Tentu!", time: "5 hari lalu" },
+            { name: "Scroll Test", text: "Ini adalah postingan terakhir untuk menguji kemampuan gulir. Semoga berfungsi dengan baik!", time: "6 hari lalu" }
+        ];
+
+        return dummyData.map(data => {
+            const locationDisplay = data.location 
+              ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${data.location.name}</a>`
               : '';
             
-            const mapPlaceholder = location 
+            const mapPlaceholder = data.location 
               ? `
                 <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative opacity-50">
                     <div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300">
                         <div class="p-4">
                             <svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
-                            <p class="text-sm font-medium">${escapeHtml(location.name)}</p>
-                            <p class="text-xs">${escapeHtml(location.detail || '')}</p>
+                            <p class="text-sm font-medium">${data.location.name}</p>
+                            <p class="text-xs">${data.location.detail}</p>
                         </div>
                     </div>
                 </div>
             ` : '';
 
             return `
-                <div class="post-card mb-3 shadow-md">
+                <div class="post-card mb-3 shadow-md opacity-80">
                     <div class="p-4">
                         <div class="flex items-center mb-3">
-                            <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${name[0]}</div>
+                            <div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-lg mr-2">${data.name[0]}</div>
                             <div class="flex-grow">
-                                <p class="font-semibold text-gray-900">${name}
+                                <p class="font-semibold text-gray-900">${data.name}
                                     ${locationDisplay}
                                 </p>
-                                <p class="text-xs text-gray-500">${time} · Publik</p>
+                                <p class="text-xs text-gray-500">${data.time} · Dummy</p>
                             </div>
                         </div>
-                        <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${text}</p>
+                        <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${data.text}</p>
                         ${mapPlaceholder}
                         <div class="flex justify-around border-t border-gray-200 mt-4 pt-2 text-gray-400">
-                            <button class="p-2 flex items-center hover:text-fb-blue transition duration-150">
-                                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-7.019a2 2 0 01-1.63-2.613l2.548-7.789a1 1 0 01.442-.424l.056-.008.007-.003.007-.001A.606.606 0 019.168 10h.008l.008.001.01.006.023.018z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21v-9"></path></svg>
-                                Suka
-                            </button>
-                            <button class="p-2 flex items-center hover:text-fb-blue transition duration-150">
-                                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                                Komentar
-                            </button>
-                            <button class="p-2 flex items-center hover:text-fb-blue transition duration-150">
-                                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.882 13.435 9 13.528 9 13.528v2c0 1.006-.51 1.064-1.119.882l-1.464-.46a1.912 1.912 0 01-1.432-1.748V9.894c0-.782.502-1.39 1.156-1.546l.666-.157V5.707c0-.285.344-.452.597-.319l.57.264c.243.111.417.37.417.653v3.318"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21h7a2 2 0 002-2v-4a2 2 0 00-2-2h-3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v3a2 2 0 002 2h3"></path></svg>
-                                Bagikan
-                            </button>
+                            <button class="p-2">Suka</button>
+                            <button class="p-2">Komentar</button>
+                            <button class="p-2">Bagikan</button>
                         </div>
                     </div>
                 </div>
             `;
-        }
+        }).join("");
+    }
 
-        // --- Helper: Generate Dummy Posts untuk Scrollable View ---
-        function generateDummyPosts() {
-            const dummyData = [
-                { name: "Sistem", text: "Curhatanmu akan muncul di sini. Coba buat postingan pertamamu!", time: "Sekarang", location: { name: "Jeneponto", detail: "Sulawesi Selatan" } },
-                { name: "Pengguna Anonim", text: "Halaman ini sudah bisa di-scroll ke bawah dan ke atas. Gulir terus untuk melihat postingan lama!", time: "1 jam lalu" },
-                { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "1 hari lalu" },
-                { name: "Budi", text: "Semoga aplikasinya ramai ya! Saya senang dengan tampilan barunya. Sangat responsif di ponsel.", time: "2 hari lalu" },
-                { name: "Dewi", text: "Hari ini cuaca cerah sekali, mood jadi bagus! ✨", time: "3 hari lalu", location: { name: "Makassar", detail: "Kota Angin Mamiri" } },
-                { name: "Placeholder", text: "Curhatan ke-6: Apakah saya sudah bisa melihat scroll bar? Ya, sudah! 👍", time: "4 hari lalu" },
-                { name: "Tes Scroll", text: "Coba lagi gulir ke bawah. Apakah ada konten tambahan? Tentu!", time: "5 hari lalu" },
-                { name: "Scroll Test", text: "Ini adalah postingan terakhir untuk menguji kemampuan gulir. Semoga berfungsi dengan baik!", time: "6 hari lalu" }
-            ];
+    // --- Helper: escape untuk mencegah XSS sederhana ---
+    function escapeHtml(str) {
+      if (!str && str !== 0) return "";
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
-            return dummyData.map(data => {
-                const locationDisplay = data.location 
-                ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${data.location.name}</a>`
-                : '';
-                
-                const mapPlaceholder = data.location 
-                ? `
-                    <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative opacity-50">
-                        <div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300">
-                            <div class="p-4">
-                                <svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
-                                <p class="text-sm font-medium">${data.location.name}</p>
-                                <p class="text-xs">${data.location.detail}</p>
-                            </div>
-                        </div>
-                    </div>
-                ` : '';
+    // --- Helper: Modal Pesan (Mengganti alert()) ---
+    const msgModal = document.getElementById('messageModal');
+    const msgTitle = document.getElementById('messageTitle');
+    const msgContent = document.getElementById('messageContent');
+    document.getElementById('messageCloseBtn').addEventListener('click', () => msgModal.style.display = 'none');
+    
+    function showModalMessage(title, content) {
+        msgTitle.textContent = title;
+        msgContent.textContent = content;
+        msgModal.style.display = 'flex';
+    }
 
-                return `
-                    <div class="post-card mb-3 shadow-md opacity-80">
-                        <div class="p-4">
-                            <div class="flex items-center mb-3">
-                                <div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-lg mr-2">${data.name[0]}</div>
-                                <div class="flex-grow">
-                                    <p class="font-semibold text-gray-900">${data.name}
-                                        ${locationDisplay}
-                                    </p>
-                                    <p class="text-xs text-gray-500">${data.time} · Dummy</p>
-                                </div>
-                            </div>
-                            <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${data.text}</p>
-                            ${mapPlaceholder}
-                            <div class="flex justify-around border-t border-gray-200 mt-4 pt-2 text-gray-400">
-                                <button class="p-2">Suka</button>
-                                <button class="p-2">Komentar</button>
-                                <button class="p-2">Bagikan</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join("");
-        }
-
-        // --- Helper: escape untuk mencegah XSS sederhana ---
-        function escapeHtml(str) {
-            if (!str && str !== 0) return "";
-            return String(str)
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
-        }
-
-        // --- Helper: Modal Pesan (Mengganti alert()) ---
-        const msgModal = document.getElementById('messageModal');
-        const msgTitle = document.getElementById('messageTitle');
-        const msgContent = document.getElementById('messageContent');
-        const messageCloseBtn = document.getElementById('messageCloseBtn');
-
-        if (messageCloseBtn) {
-            messageCloseBtn.addEventListener('click', () => msgModal.style.display = 'none');
-        }
-        
-        function showModalMessage(title, content) {
-            msgTitle.textContent = title;
-            msgContent.textContent = content;
-            msgModal.style.display = 'flex';
-        }
-
-        // --- Logika Lokasi (Dummy Data) ---
-        const dummyLocations = [
-            { name: "Jakarta", detail: "DKI Jakarta, Indonesia" },
-            { name: "Bandung", detail: "Jawa Barat, Indonesia" },
-            { name: "Surabaya", detail: "Jawa Timur, Indonesia" },
-            { name: "Yogyakarta", detail: "DIY, Indonesia" },
-            { name: "Medan", detail: "Sumatera Utara, Indonesia" },
-            { name: "Makassar", detail: "Sulawesi Selatan, Indonesia" },
-            { name: "Denpasar", detail: "Bali, Indonesia" },
-        ];
-
-        function renderLocationList(locations) {
-            const locationList = document.getElementById('locationList');
-            if (!locationList) return;
-
-            if (locations.length === 0) {
-                locationList.innerHTML = `<p class="p-4 text-center text-gray-500">Tidak ada lokasi yang cocok.</p>`;
-                return;
-            }
-
-            locationList.innerHTML = locations.map(loc => `
-                <button class="location-item w-full flex items-center p-4 hover:bg-gray-100 transition duration-150 text-left" data-name="${escapeHtml(loc.name)}" data-detail="${escapeHtml(loc.detail)}">
-                    <svg class="w-6 h-6 mr-3 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
-                    <div>
-                        <p class="font-semibold text-gray-900">${escapeHtml(loc.name)}</p>
-                        <p class="text-sm text-gray-500">${escapeHtml(loc.detail)}</p>
-                    </div>
-                </button>
-            `).join('');
-
-            // Add listener to location items
-            locationList.querySelectorAll('.location-item').forEach(button => {
-                button.addEventListener('click', () => {
-                    selectedLocation = {
-                        name: button.dataset.name,
-                        detail: button.dataset.detail
-                    };
-                    updateLocationBar();
-                    showView('post');
-                });
-            });
-        }
-
-        function updateLocationBar() {
-            const bar = document.getElementById('locationSelectionBar');
-            const text = document.getElementById('locationBarText');
-            if (!bar || !text) return;
-
-            if (selectedLocation) {
-                text.textContent = selectedLocation.name;
-                bar.classList.remove('hidden');
-            } else {
-                bar.classList.add('hidden');
-                text.textContent = '';
-            }
-        }
-
-        // --- Event Listeners UI & Forms ---
-        window.onload = () => {
-            initAuth();
-            renderLocationList(dummyLocations); // Inisialisasi daftar lokasi
-
-            // --- Auth View Listeners ---
-            document.getElementById('authSwitchToRegister')?.addEventListener('click', (e) => { e.preventDefault(); loginCard.classList.add('hidden'); registerCard.classList.remove('hidden'); });
-            document.getElementById('authSwitchToLogin')?.addEventListener('click', (e) => { e.preventDefault(); registerCard.classList.add('hidden'); loginCard.classList.remove('hidden'); });
-
-            document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = e.target.email.value;
-                const password = e.target.password.value;
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                    showModalMessage('Berhasil', 'Selamat datang kembali!');
-                    // Auth listener akan menangani view switch
-                } catch (error) {
-                    showModalMessage('Login Gagal', error.message);
-                }
-            });
-
-            document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = e.target.email.value;
-                const password = e.target.password.value;
-                try {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                    showModalMessage('Berhasil', 'Akun berhasil dibuat. Silakan tetapkan nama profil Anda.');
-                    // Auth listener akan menangani view switch ke modal profil
-                } catch (error) {
-                    showModalMessage('Pendaftaran Gagal', error.message);
-                }
-            });
-            
-            // --- Profile Modal Listener ---
-            document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const newUsername = e.target.profileName.value.trim();
-                if (!newUsername || !currentUserId || !db) return;
-
-                try {
-                    const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'profile', 'data');
-                    await setDoc(userDocRef, { username: newUsername, uid: currentUserId });
-                    currentUsername = newUsername;
-                    updateUsernameDisplay(currentUsername);
-                    profileModal.style.display = 'none';
-                    showView('main');
-                    showModalMessage('Sukses', `Nama profil Anda (${newUsername}) berhasil disimpan!`);
-                } catch (error) {
-                    console.error("Error saving user profile:", error);
-                    showModalMessage('Error', 'Gagal menyimpan nama profil: ' + error.message);
-                }
-            });
-
-            // --- Main View Listeners ---
-            document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-                try {
-                    await signOut(auth);
-                    showModalMessage('Sampai Jumpa', 'Anda telah berhasil logout.');
-                } catch (error) {
-                    showModalMessage('Error Logout', error.message);
-                }
-            });
-
-            document.getElementById('goToPostBtn')?.addEventListener('click', () => {
-                if (currentUsername) {
-                    showView('post');
-                } else {
-                    showModalMessage('Profil Diperlukan', 'Harap tetapkan nama profil Anda terlebih dahulu.');
-                    profileModal.style.display = 'flex';
-                }
-            });
-
-            // --- Post View Listeners ---
-            document.getElementById('postFormBackBtn')?.addEventListener('click', () => showView('main'));
-            
-            document.getElementById('curhatForm')?.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const postText = e.target.text.value.trim();
-                if (!postText || !currentUserId || !currentUsername) {
-                    showModalMessage('Input Kurang', 'Curhatan tidak boleh kosong.');
-                    return;
-                }
-
-                document.getElementById('submitPostBtn').disabled = true;
-
-                try {
-                    const curhatsColRef = collection(db, 'artifacts', appId, 'public/data/curhats');
-                    
-                    const newPost = {
-                        text: postText,
-                        username: currentUsername,
-                        uid: currentUserId,
-                        timestamp: serverTimestamp(),
-                        location: selectedLocation // Bisa null
-                    };
-
-                    await addDoc(curhatsColRef, newPost);
-
-                    showModalMessage('Sukses Posting', 'Curhatan Anda berhasil diunggah!');
-                    showView('main');
-                } catch (error) {
-                    console.error("Error adding document: ", error);
-                    showModalMessage('Error Posting', 'Gagal memposting curhatan: ' + error.message);
-                } finally {
-                    document.getElementById('submitPostBtn').disabled = false;
-                    selectedLocation = null;
-                }
-            });
-
-            // --- Location Modal Listeners ---
-            document.getElementById('openLocationModalBtn')?.addEventListener('click', () => showView('location'));
-            document.getElementById('locationModalBackBtn')?.addEventListener('click', () => showView('post'));
-            document.getElementById('removeLocationBtn')?.addEventListener('click', () => {
-                selectedLocation = null;
-                updateLocationBar();
-            });
-
-            document.getElementById('locationSearchInput')?.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const filtered = dummyLocations.filter(loc => 
-                    loc.name.toLowerCase().includes(query) || loc.detail.toLowerCase().includes(query)
-                );
-                renderLocationList(filtered);
-            });
-        };
-        
-    </script>
+  </script>
 </head>
 
 <body>
   
   
-<!-- Modal Pesan (Mengganti alert()) -->
+
 <div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[2000]">
       <div class="bg-white p-6 rounded-xl shadow-2xl w-11/12 max-w-xs text-center">
           <h4 id="messageTitle" class="text-xl font-bold mb-3 text-red-600">Pesan</h4>
@@ -546,8 +617,8 @@
   </div>
 
   
-<!-- Modal Nama Profil (Diperlukan setelah Auth) -->
-<div id="profileModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[1000]">
+
+<div id="profileModal" class="hidden">
     <div class="box bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-sm text-center">
       <h3 class="text-2xl font-extrabold text-fb-blue mb-2">Selamat datang! 👋</h3>
       <p class="text-gray-600 mb-6">Tolong isi nama profil yang ingin kamu gunakan.</p>
@@ -564,17 +635,17 @@
 
 
   
-<!-- Auth View (Login/Register) -->
+
 <div id="authView" class="hidden min-h-screen flex items-center justify-center bg-white p-4">
     <div class="w-full max-w-md">
       
-<!-- Facebook Logo Placeholder -->
+
 <div class="text-center mb-10">
         <svg class="mx-auto" fill="#1877F2" viewBox="0 0 24 24" width="48px" height="48px"><path d="M12 2C6.477 2 2 6.477 2 12c0 5.016 3.655 9.182 8.437 9.879V14.92h-2.92v-2.92h2.92V9.69c0-2.887 1.761-4.47 4.33-4.47.828 0 1.54.062 1.748.09V7.89h-1.571c-1.39 0-1.66.66-1.66 1.63V11.8h3.284l-.527 2.92h-2.757v6.959C18.345 21.182 22 17.016 22 12c0-5.523-4.477-10-10-10z"/></svg>
       </div>
 
       
-<!-- Login Card -->
+
 <div id="loginCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
         <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Masuk ke Tempat Curhat</h3>
         <form id="loginForm" class="space-y-4">
@@ -598,7 +669,7 @@
       </div>
       
       
-<!-- Register Card -->
+
 <div id="registerCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
         <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Daftar Akun Baru</h3>
         <form id="registerForm" class="space-y-4">
@@ -621,11 +692,11 @@
 
 
   
-<!-- Main View (Feed) -->
+
 <div id="mainView" class="hidden pt-24 min-h-screen"> 
     
     
-<!-- Navigasi Atas -->
+
 <nav class="fixed top-0 left-0 right-0 bg-white shadow-md z-10">
       <div class="flex items-center justify-between max-w-xl mx-auto p-3">
         <h1 class="text-2xl font-extrabold text-fb-blue">CurhatApp</h1>
@@ -636,7 +707,7 @@
         </div>
       </div>
       
-<!-- Tab Navigasi (Bagian 4 dimulai di sini) -->
+
 <div class="flex justify-around border-t border-gray-200 text-gray-500">
         <div class="p-3 text-fb-blue border-b-2 border-fb-blue font-semibold">Feed Curhat</div>
         <div class="p-3 hover:bg-gray-100 transition duration-150">Notifikasi</div>
@@ -644,11 +715,11 @@
     </nav>
 
     
-<!-- Konten Utama (Input Post dan Daftar Curhat) -->
+
 <div class="max-w-xl mx-auto px-3 pt-3 pb-10"> 
         
         
-<!-- Kotak Input Post -->
+
 <div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
             <div class="flex items-center space-x-2">
                 <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
@@ -658,7 +729,7 @@
                     Apa yang Anda pikirkan?
                 </button>
             </div>
-            <div class="border-t border-gray-200 mt-3 pt-3 flex justify-around opacity-60">
+            <div class="border-t border-gray-200 mt-3 pt-3 flex justify-around">
                 <div class="flex items-center text-red-500 font-medium">
                     <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     Foto/Video
@@ -671,7 +742,7 @@
         </div>
 
         
-<!-- Daftar Curhatan (Feed) -->
+
 <div id="curhatList">
           <p class="text-center text-gray-500 mt-10">Memuat curhatan...</p>
         </div>
@@ -680,10 +751,10 @@
 
 
   
-<!-- Post View (Form Membuat Curhatan) -->
+
 <div id="postView" class="hidden fixed inset-0 flex flex-col bg-white z-20">
     
-<!-- Header Post View -->
+
 <header class="flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
         <button id="postFormBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -695,7 +766,7 @@
     </header>
 
     
-<!-- Area Input Curhatan -->
+
 <div class="flex-grow p-4 overflow-y-auto">
         <div class="flex items-center mb-6">
             <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
@@ -721,7 +792,7 @@
     </div>
 
     
-<!-- Lokasi yang Dipilih Bar (Muncul saat lokasi dipilih) -->
+
 <div id="locationSelectionBar" class="hidden absolute bottom-20 left-4 right-4 bg-white p-3 rounded-xl shadow-lg border border-gray-200 flex items-center justify-between">
         <div class="flex items-center">
             <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -733,10 +804,10 @@
     </div>
 
     
-<!-- Footer Post View (Menu Tambahan) -->
+
 <div class="border-t border-gray-200 p-4">
         <div class="space-y-4">
-            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150 opacity-60">
+            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
                 <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 Foto/Video
             </div>
@@ -746,7 +817,7 @@
                 Tambahkan lokasi
             </button>
 
-            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150 opacity-60">
+            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
                 <svg class="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Perasaan/aktivitas
             </div>
@@ -756,8 +827,8 @@
 
 
   
-<!-- Location Modal (Memilih Lokasi) -->
-<div id="locationModal" class="flex-col bg-white fixed inset-0 z-30">
+
+<div id="locationModal" class="flex-col bg-white">
       <header class="flex items-center justify-between p-4 border-b border-gray-200">
           <button id="locationModalBackBtn" class="text-gray-700 hover:text-gray-900 p-1">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -769,7 +840,7 @@
       </header>
       
       
-<!-- Search Lokasi -->
+
 <div class="p-4 border-b border-gray-200">
           <div class="flex items-center bg-gray-100 rounded-full p-2">
               <input id="locationSearchInput" type="text" placeholder="Cari"
@@ -780,7 +851,7 @@
       </div>
 
       
-<!-- Daftar Lokasi -->
+
 <div class="flex-grow overflow-y-auto">
           <h3 class="text-lg font-semibold text-gray-700 p-4 border-b border-gray-200">Saran</h3>
           <div id="locationList">
