@@ -66,7 +66,7 @@
     }
 
     /* Styling khusus untuk modal agar tetap di tengah */
-    #profileModal, #locationModal { 
+    #profileModal { 
       display:none; 
       position:fixed; 
       inset:0; 
@@ -75,10 +75,13 @@
       justify-content:center; 
       z-index:1000; 
     }
-    #locationModal {
-        /* Modal lokasi harus menutupi seluruh layar seperti aplikasi */
+    
+    /* Modal Lokasi & Perasaan (Fullscreen) */
+    #locationModal, #feelingModal {
         background: #fff;
         display: none; 
+        position: fixed;
+        inset: 0;
         flex-direction: column;
         align-items: stretch;
         justify-content: flex-start;
@@ -91,6 +94,12 @@
         border-radius: 12px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         margin-bottom: 12px;
+    }
+
+    /* Styling Tab untuk Modal Perasaan */
+    .feeling-tab.active {
+        border-color: #1877F2; /* fb-blue */
+        color: #1877F2;
     }
   </style>
 
@@ -119,8 +128,9 @@
 
     // --- State Aplikasi ---
     let currentPage = 'Auth'; // Bisa 'Auth', 'Main', atau 'Post'
-    // State baru untuk Lokasi
+    // State baru
     let selectedLocation = null; // {name: "Nama Lokasi", detail: "Detail Lokasi"}
+    let selectedFeeling = null; // {type: 'feeling'/'activity', emoji: "😊", text: "senang"}
     
     // --- Data Lokasi Dummy ---
     const DUMMY_LOCATIONS = [
@@ -131,6 +141,30 @@
       { name: "Zona Nyaman", detail: "Kota Makassar, Sulawesi Selatan, ID" },
       { name: "Kampung Beru Kec, bangkala Kab, jeneponto", detail: "Bangkala, South Sulawesi, ID" },
       { name: "Desa Laikang", detail: "Jeneponto, South Sulawesi, ID" },
+    ];
+
+    // --- Data Perasaan/Aktivitas Dummy (BARU) ---
+    const DUMMY_FEELINGS = [
+      { emoji: "😊", text: "senang" },
+      { emoji: "😇", text: "terberkati" },
+      { emoji: "🥰", text: "dicintai" },
+      { emoji: "😥", text: "sedih" },
+      { emoji: "😍", text: "penuh cinta" },
+      { emoji: "🙏", text: "bersyukur" },
+      { emoji: "🤩", text: "bersemangat" },
+      { emoji: "😘", text: "jatuh cinta" },
+      { emoji: "🤪", text: "gila" },
+      { emoji: "🥳", text: "penuh kegembiraan" },
+      { emoji: "🤩", text: "fantastis" },
+    ];
+
+    const DUMMY_ACTIVITIES = [
+        { emoji: "🎉", text: "merayakan..." },
+        { emoji: "✈️", text: "bepergian ke..." },
+        { emoji: "☕", text: "minum kopi" },
+        { emoji: "📖", text: "membaca buku" },
+        { emoji: "🎧", text: "mendengarkan musik" },
+        { emoji: "🎮", text: "bermain game" },
     ];
 
 
@@ -147,14 +181,24 @@
     const profileForm = document.getElementById("profileForm");
     const profileNameInput = document.getElementById("profileName");
     const postFormBackBtn = document.getElementById("postFormBackBtn");
-    const postUsernameDisplay = document.getElementById("postUsernameDisplay");
+    // (Perbaikan ID) Mengganti postUsernameDisplay menjadi 2 ID unik
+    const postAvatarLetter = document.getElementById("postAvatarLetter");
+    const postUsernameText = document.getElementById("postUsernameText");
 
-    // Elemen Lokasi Baru
+
+    // Elemen Lokasi
     const locationModal = document.getElementById("locationModal");
     const locationList = document.getElementById("locationList");
     const locationSearchInput = document.getElementById("locationSearchInput");
     const locationSelectionBar = document.getElementById("locationSelectionBar");
     const locationBarText = document.getElementById("locationBarText");
+
+    // Elemen Perasaan (BARU)
+    const feelingModal = document.getElementById("feelingModal");
+    const feelingList = document.getElementById("feelingList");
+    const feelingSearchInput = document.getElementById("feelingSearchInput");
+    const feelingTabPerasaan = document.getElementById("feelingTabPerasaan");
+    const feelingTabAktivitas = document.getElementById("feelingTabAktivitas");
 
     // --- Fungsi Navigasi Halaman ---
     function navigateTo(page) {
@@ -162,7 +206,8 @@
       authView.style.display = 'none';
       mainView.style.display = 'none';
       postView.style.display = 'none';
-      locationModal.style.display = 'none'; // Pastikan modal lokasi tertutup
+      locationModal.style.display = 'none';
+      feelingModal.style.display = 'none'; // Pastikan modal perasaan tertutup
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -171,14 +216,16 @@
       } else if (page === 'Post') {
         postView.style.display = 'flex';
         renderLocationBar(); // Panggil saat masuk ke Post view
+        renderPostHeader(); // (BARU) Panggil untuk update nama + perasaan
       }
     }
 
     // --- EVENT LISTENERS UI ---
     document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
     document.getElementById('goToPostBtn').addEventListener('click', () => {
-        // Reset lokasi saat memulai post baru
+        // Reset lokasi & perasaan saat memulai post baru
         selectedLocation = null;
+        selectedFeeling = null; // (BARU) Reset perasaan
         navigateTo('Post');
     });
     postFormBackBtn.addEventListener('click', () => navigateTo('Main'));
@@ -191,24 +238,18 @@
       document.getElementById('loginCard').style.display = 'block';
     });
 
-    // Buka Modal Lokasi saat tombol "Tambahkan lokasi" di Post View ditekan
+    // --- Event Listener Lokasi ---
     document.getElementById('openLocationModalBtn').addEventListener('click', () => {
       renderLocationList(DUMMY_LOCATIONS);
       locationModal.style.display = 'flex';
     });
-
-    // Tombol kembali di Modal Lokasi
     document.getElementById('locationModalBackBtn').addEventListener('click', () => {
       locationModal.style.display = 'none';
     });
-
-    // Hapus Lokasi di Post View
     document.getElementById('removeLocationBtn').addEventListener('click', () => {
       selectedLocation = null;
       renderLocationBar();
     });
-
-    // Filter Lokasi
     locationSearchInput.addEventListener('input', (e) => {
       const searchTerm = e.target.value.toLowerCase();
       const filtered = DUMMY_LOCATIONS.filter(loc => 
@@ -217,6 +258,41 @@
       );
       renderLocationList(filtered);
     });
+    
+    // --- Event Listener Perasaan (BARU) ---
+    document.getElementById('openFeelingModalBtn').addEventListener('click', () => {
+      renderFeelingList(DUMMY_FEELINGS, 'feeling'); // Tampilkan tab perasaan by default
+      feelingTabPerasaan.classList.add('active');
+      feelingTabAktivitas.classList.remove('active');
+      feelingSearchInput.value = '';
+      feelingModal.style.display = 'flex';
+    });
+    document.getElementById('feelingModalBackBtn').addEventListener('click', () => {
+      feelingModal.style.display = 'none';
+    });
+    // Tab Listeners
+    feelingTabPerasaan.addEventListener('click', () => {
+        renderFeelingList(DUMMY_FEELINGS, 'feeling');
+        feelingTabPerasaan.classList.add('active');
+        feelingTabAktivitas.classList.remove('active');
+    });
+    feelingTabAktivitas.addEventListener('click', () => {
+        renderFeelingList(DUMMY_ACTIVITIES, 'activity');
+        feelingTabPerasaan.classList.remove('active');
+        feelingTabAktivitas.classList.add('active');
+    });
+    // Filter Perasaan/Aktivitas
+    feelingSearchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const currentType = feelingTabPerasaan.classList.contains('active') ? 'feeling' : 'activity';
+        const sourceData = currentType === 'feeling' ? DUMMY_FEELINGS : DUMMY_ACTIVITIES;
+        
+        const filtered = sourceData.filter(item => 
+            item.text.toLowerCase().includes(searchTerm)
+        );
+        renderFeelingList(filtered, currentType);
+    });
+
 
     // --- Fungsi Render dan Logika Lokasi ---
 
@@ -256,7 +332,51 @@
       });
     }
 
-    // --- Bagian Auth, Profile, dan Firestore (Logika inti tidak diubah) ---
+    // --- Fungsi Render Perasaan (BARU) ---
+
+    // (BARU) Render header di halaman Post (Nama + Perasaan)
+    // Sesuai Screenshot_2025_1101_052430.png
+    function renderPostHeader() {
+        const user = auth.currentUser;
+        if (!user) return;
+        
+        const name = user.displayName || user.email;
+        postAvatarLetter.textContent = name[0] || '?'; // Avatar
+
+        let feelingHTML = '';
+        if (selectedFeeling) {
+            const actionText = selectedFeeling.type === 'feeling' ? 'merasa' : 'sedang';
+            feelingHTML = ` ${escapeHtml(selectedFeeling.emoji)} <span class="font-normal">${actionText} ${escapeHtml(selectedFeeling.text)}.</span>`;
+        }
+        postUsernameText.innerHTML = `${escapeHtml(name)}${feelingHTML}`;
+    }
+
+    // (BARU) Menampilkan daftar perasaan/aktivitas di modal
+    function renderFeelingList(items, type) {
+        feelingList.innerHTML = '';
+        if (items.length === 0) {
+            feelingList.innerHTML = `<p class="text-center text-gray-500 mt-4">Tidak ada ${type} ditemukan.</p>`;
+            return;
+        }
+        items.forEach(itemData => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100';
+            item.innerHTML = `
+                <span class="text-2xl mr-3">${itemData.emoji}</span>
+                <div>
+                    <p class="font-semibold text-gray-900">${escapeHtml(itemData.text)}</p>
+                </div>
+            `;
+            item.addEventListener('click', () => {
+                selectedFeeling = { type: type, ...itemData };
+                feelingModal.style.display = 'none';
+                navigateTo('Post'); // Kembali ke post view (akan memanggil renderPostHeader)
+            });
+            feelingList.appendChild(item);
+        });
+    }
+
+    // --- Bagian Auth, Profile, dan Firestore ---
     
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -318,8 +438,10 @@
 
       if (user) {
         const displayName = user.displayName || user.email;
-        userStatusDisplay.textContent = displayName;
-        postUsernameDisplay.textContent = displayName; 
+        userStatusDisplay.textContent = displayName; 
+        
+        // (PERBAIKAN) Memanggil renderPostHeader alih-alih set textContent
+        renderPostHeader(); 
         
         if (!user.displayName) {
           profileModal.style.display = "flex";
@@ -337,7 +459,7 @@
       }
     });
 
-    // --- POST CURHATAN (Menambahkan data lokasi ke Firestore) ---
+    // --- POST CURHATAN (Menambahkan data lokasi & perasaan ke Firestore) ---
     curhatForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = e.target.text.value.trim();
@@ -358,11 +480,17 @@
       if (selectedLocation) {
           postData.location = selectedLocation;
       }
+      
+      // (BARU) Tambahkan perasaan jika sudah dipilih
+      if (selectedFeeling) {
+          postData.feeling = selectedFeeling;
+      }
 
       try {
         await addDoc(collection(db, "curhatan"), postData);
         curhatForm.reset();
         selectedLocation = null; // Reset lokasi setelah post
+        selectedFeeling = null; // (BARU) Reset perasaan setelah post
         navigateTo('Main'); 
       } catch (err) {
         console.error("Gagal posting:", err);
@@ -370,7 +498,7 @@
       }
     });
 
-    // --- LISTEN REAL-TIME CURHATAN (Memperbarui tampilan lokasi) ---
+    // --- LISTEN REAL-TIME CURHATAN (Memperbarui tampilan lokasi & perasaan) ---
     function listenCurhatan() {
       const q = query(collection(db, "curhatan"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(q, (snapshot) => {
@@ -401,11 +529,19 @@
               ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a>`
               : '';
               
-          // Tentukan tampilan Map Placeholder jika ada lokasi (sesuai gambar)
+          // (BARU) Tentukan apakah ada perasaan
+          // Sesuai Screenshot_2025_1101_052454.png
+          const feelingData = data.feeling;
+          let feelingDisplay = '';
+          if (feelingData) {
+              const actionText = feelingData.type === 'feeling' ? 'merasa' : 'sedang';
+              feelingDisplay = ` ${escapeHtml(feelingData.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(feelingData.text)}.</span>`;
+          }
+              
+          // Tentukan tampilan Map Placeholder jika ada lokasi
           const mapPlaceholder = locationData 
               ? `
                 <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">
-                    <!-- Map Placeholder (sesuai Screenshot_2025_1031_203803.png) -->
                     <div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300">
                         <div class="p-4">
                             <svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
@@ -433,6 +569,7 @@
                     <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${displayName[0]}</div>
                     <div class="flex-grow">
                         <p class="font-semibold text-gray-900">${escapeHtml(displayName)} 
+                            ${feelingDisplay}
                             ${locationDisplay}
                         </p>
                         <p class="text-xs text-gray-500">${time} · Publik</p>
@@ -527,7 +664,7 @@
         const dummyData = [
             { name: "Sistem", text: "Curhatanmu akan muncul di sini. Coba buat postingan pertamamu!", time: "Sekarang", location: { name: "Jeneponto", detail: "Sulawesi Selatan" } },
             { name: "Pengguna Anonim", text: "Halaman ini sudah bisa di-scroll ke bawah dan ke atas. Gulir terus untuk melihat postingan lama!", time: "1 jam lalu" },
-            { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "1 hari lalu" },
+            { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "2 hari lalu", feeling: { emoji: '😊', text: 'senang', type: 'feeling'} },
             { name: "Budi", text: "Semoga aplikasinya ramai ya! Saya senang dengan tampilan barunya. Sangat responsif di ponsel.", time: "2 hari lalu" },
             { name: "Dewi", text: "Hari ini cuaca cerah sekali, mood jadi bagus! ✨", time: "3 hari lalu", location: { name: "Makassar", detail: "Kota Angin Mamiri" } },
             { name: "Placeholder", text: "Curhatan ke-6: Apakah saya sudah bisa melihat scroll bar? Ya, sudah! 👍", time: "4 hari lalu" },
@@ -539,6 +676,12 @@
             const locationDisplay = data.location 
               ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${data.location.name}</a>`
               : '';
+              
+            let feelingDisplay = '';
+            if (data.feeling) {
+                const actionText = data.feeling.type === 'feeling' ? 'merasa' : 'sedang';
+                feelingDisplay = ` ${escapeHtml(data.feeling.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(data.feeling.text)}.</span>`;
+            }
             
             const mapPlaceholder = data.location 
               ? `
@@ -560,6 +703,7 @@
                             <div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-lg mr-2">${data.name[0]}</div>
                             <div class="flex-grow">
                                 <p class="font-semibold text-gray-900">${data.name}
+                                    ${feelingDisplay}
                                     ${locationDisplay}
                                 </p>
                                 <p class="text-xs text-gray-500">${data.time} · Dummy</p>
@@ -600,107 +744,6 @@
         msgContent.textContent = content;
         msgModal.style.display = 'flex';
     }
-
-<!-- === POPUP PERASAAN/AKTIVITAS === -->
-<div id="moodModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
-  <div class="bg-gray-900 rounded-xl shadow-2xl w-80 md:w-96 p-4 relative">
-    <button id="closeMoodModal" class="absolute top-2 right-2 text-gray-400 hover:text-white">
-      ✖
-    </button>
-    <h2 class="text-xl font-bold text-yellow-300 mb-3 text-center">Pilih Perasaan / Aktivitas</h2>
-
-    <!-- Tab Menu -->
-    <div class="flex mb-3 border-b border-gray-700">
-      <button id="tab-feeling" class="flex-1 text-center py-2 font-semibold text-white border-b-2 border-yellow-400">Perasaan</button>
-      <button id="tab-activity" class="flex-1 text-center py-2 font-semibold text-gray-400 hover:text-white">Aktivitas</button>
-    </div>
-
-    <!-- List Perasaan -->
-    <div id="feelingList" class="grid grid-cols-2 gap-3">
-      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="feeling" data-text="senang">😊 Senang</button>
-      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="feeling" data-text="sedih">😢 Sedih</button>
-      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="feeling" data-text="dicintai">❤️ Dicintai</button>
-      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="feeling" data-text="malas">😴 Malas</button>
-    </div>
-
-    <!-- List Aktivitas -->
-    <div id="activityList" class="grid grid-cols-2 gap-3 hidden">
-      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="activity" data-text="menonton">🎬 Menonton</button>
-      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="activity" data-text="makan">🍜 Makan</button>
-      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="activity" data-text="mendengarkan musik">🎧 Musik</button>
-      <button class="mood-btn bg-gray-800 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2" data-type="activity" data-text="bermain game">🎮 Game</button>
-    </div>
-  </div>
-</div>
-
-<script>
-  // === LOGIKA MODAL PERASAAN/AKTIVITAS ===
-  const moodModal = document.getElementById('moodModal');
-  const closeMoodModal = document.getElementById('closeMoodModal');
-  const tabFeeling = document.getElementById('tab-feeling');
-  const tabActivity = document.getElementById('tab-activity');
-  const feelingList = document.getElementById('feelingList');
-  const activityList = document.getElementById('activityList');
-
-  // Tombol yang sudah ada (contoh: tombol Perasaan/Aktivitas)
-  const moodBtnTrigger = document.querySelector('#post-mood-btn, #mood-button, .btn-mood'); // fleksibel
-
-  // Buka modal saat tombol diklik
-  if (moodBtnTrigger) {
-    moodBtnTrigger.addEventListener('click', () => {
-      moodModal.classList.remove('hidden');
-      moodModal.classList.add('flex');
-    });
-  }
-
-  // Tutup modal
-  closeMoodModal.addEventListener('click', () => {
-    moodModal.classList.add('hidden');
-    moodModal.classList.remove('flex');
-  });
-
-  // Ganti tab
-  tabFeeling.addEventListener('click', () => {
-    tabFeeling.classList.add('text-white', 'border-yellow-400');
-    tabActivity.classList.remove('text-white', 'border-yellow-400');
-    tabActivity.classList.add('text-gray-400');
-    feelingList.classList.remove('hidden');
-    activityList.classList.add('hidden');
-  });
-
-  tabActivity.addEventListener('click', () => {
-    tabActivity.classList.add('text-white', 'border-yellow-400');
-    tabFeeling.classList.remove('text-white', 'border-yellow-400');
-    tabFeeling.classList.add('text-gray-400');
-    activityList.classList.remove('hidden');
-    feelingList.classList.add('hidden');
-  });
-
-  // Pilih perasaan / aktivitas
-  document.querySelectorAll('.mood-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const type = btn.dataset.type;
-      const text = btn.dataset.text;
-      const icon = btn.textContent.split(' ')[0]; // ambil emoji
-
-      // Simpan ke localStorage (sementara)
-      localStorage.setItem('selectedMood', `${icon} ${type === 'feeling' ? 'merasa' : 'sedang'} ${text}`);
-
-      // Tutup modal
-      moodModal.classList.add('hidden');
-      moodModal.classList.remove('flex');
-
-      // Tambahkan ke postingan terakhir (contoh simulasi)
-      const postArea = document.querySelector('#post-feed, .post-container');
-      if (postArea) {
-        const moodText = localStorage.getItem('selectedMood');
-        const newPost = document.createElement('div');
-        newPost.className = 'game-content-panel p-4 mb-4 rounded-lg shadow-xl';
-        newPost.innerHTML = `<p class="text-gray-300 text-sm">${moodText}</p>`;
-        postArea.prepend(newPost);
-      }
-    });
-  });
 
   </script>
 </head>
@@ -871,11 +914,11 @@
 <div class="flex-grow p-4 overflow-y-auto">
         <div class="flex items-center mb-6">
             <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
-                <span id="postUsernameDisplay" class="font-semibold text-white">?</span>
+                <span id="postAvatarLetter" class="font-semibold text-white">?</span>
             </div>
             <div>
                 <p class="font-semibold text-gray-900 text-lg">
-                    <span id="postUsernameDisplay">Pengguna</span>
+                    <span id="postUsernameText">Pengguna</span>
                 </p>
                 <div class="flex items-center text-sm text-gray-600 bg-gray-200 rounded-full px-3 py-1 mt-1">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0v4m-6 4h2m-2 4h2m6-4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-4a3 3 0 013-3h2.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012.414 14H18a2 2 0 002-2v-4a2 2 0 00-2-2h-3.586a1 1 0 01-.707-.293l-1.414-1.414A1 1 0 009.586 6H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2v-1"></path></svg>
@@ -918,10 +961,10 @@
                 Tambahkan lokasi
             </button>
 
-            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
+            <button id="openFeelingModalBtn" class="w-full flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150 text-left">
                 <svg class="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Perasaan/aktivitas
-            </div>
+            </button>
         </div>
     </div>
   </div>
@@ -956,8 +999,44 @@
 <div class="flex-grow overflow-y-auto">
           <h3 class="text-lg font-semibold text-gray-700 p-4 border-b border-gray-200">Saran</h3>
           <div id="locationList">
-              <!-- Daftar Lokasi akan di-inject di sini oleh JavaScript -->
+              </div>
+      </div>
+  </div>
+
+  
+
+<div id="feelingModal" class="flex-col bg-white">
+      <header class="flex items-center justify-between p-4 border-b border-gray-200">
+          <button id="feelingModalBackBtn" class="text-gray-700 hover:text-gray-900 p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900">Apa yang Anda rasakan?</h2>
+          <button class="text-fb-blue font-semibold p-1 opacity-0 pointer-events-none">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          </button>
+      </header>
+      
+      <div class="flex border-b border-gray-200">
+          <button id="feelingTabPerasaan" class="feeling-tab flex-1 p-4 font-semibold text-gray-600 border-b-2 border-transparent hover:bg-gray-50 active">
+              Perasaan
+          </button>
+          <button id="feelingTabAktivitas" class="feeling-tab flex-1 p-4 font-semibold text-gray-600 border-b-2 border-transparent hover:bg-gray-50">
+              Aktivitas
+          </button>
+      </div>
+
+      <div class="p-4 border-b border-gray-200">
+          <div class="flex items-center bg-gray-100 rounded-full p-2">
+              <input id="feelingSearchInput" type="text" placeholder="Cari..."
+                  class="flex-grow bg-transparent border-none focus:ring-0 focus:border-transparent p-0 text-lg"
+              />
+              <svg class="w-6 h-6 text-gray-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
+      </div>
+
+      <div class="flex-grow overflow-y-auto">
+          <div id="feelingList">
+              </div>
       </div>
   </div>
 
