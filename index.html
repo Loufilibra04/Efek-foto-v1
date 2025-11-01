@@ -178,7 +178,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc } 
+    // PERUBAHAN: Menambahkan arrayRemove
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
@@ -281,7 +282,7 @@
     const chatMessageList = document.getElementById("chatMessageList");
     const chatForm = document.getElementById("chatForm");
     const chatTextInput = document.getElementById("chatTextInput");
-    const chatSettingsBtn = document.getElementById('chatSettingsBtn'); // Tombol setting di chat
+    const chatSettingsBtn = document.getElementById('chatSettingsBtn'); 
 
     // Elemen Menu & Pengaturan
     const menuView = document.getElementById("menuView");
@@ -839,13 +840,13 @@
       if (!user) return showModalMessage("Kesalahan", "Harus login dulu");
       const userName = user.displayName || user.email;
       const postData = {
-        text, userId: user.uid, userName, createdAt: new Date(), comments: []
+        text, userId: user.uid, userName, createdAt: new Date(), comments: [], likes: [] // <-- Tambahkan array likes
       };
       // Tambahkan data snapshot
       if (currentUserAvatarId) {
           postData.userAvatarId = currentUserAvatarId;
       }
-      postData.isVerified = isCurrentUserVerified; // <-- Simpan status verifikasi
+      postData.isVerified = isCurrentUserVerified; 
       
       if (selectedLocation) { postData.location = selectedLocation; }
       if (selectedFeeling) { postData.feeling = selectedFeeling; }
@@ -967,12 +968,17 @@
                 ${mapPlaceholder}
             </div>`;
           
+          // --- PERUBAHAN: Tombol Suka ---
+          const likes = data.likes || [];
+          const isLiked = auth.currentUser ? likes.includes(auth.currentUser.uid) : false;
+          
           const buttonsHtml = `
             <div class="p-4 pt-0">
                 <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
-                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                        <svg classs="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
-                        Suka
+                    <button class="like-btn flex items-center ${isLiked ? 'text-fb-blue' : 'text-gray-600'} hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
+                        <span class="like-text">${isLiked ? 'Disukai' : 'Suka'}</span>
+                        <span class="like-count ml-1">(${likes.length})</span>
                     </button>
                     <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
                         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
@@ -1014,7 +1020,36 @@
           
           div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
           
-          // --- Logika untuk Render & Balas Komentar ---
+          // --- PERUBAHAN: Listener Tombol Suka ---
+          const likeBtn = div.querySelector(".like-btn");
+          likeBtn.addEventListener('click', async () => {
+              const user = auth.currentUser;
+              if (!user) {
+                  showModalMessage("Kesalahan", "Anda harus login untuk menyukai postingan.");
+                  return;
+              }
+              
+              const postRef = doc(db, "curhatan", id);
+              // Cek data terbaru dari snapshot
+              const currentLikes = (docSnap.data().likes || []);
+              const isCurrentlyLiked = currentLikes.includes(user.uid);
+
+              try {
+                  if (isCurrentlyLiked) {
+                      // Unlike
+                      await updateDoc(postRef, { likes: arrayRemove(user.uid) });
+                  } else {
+                      // Like
+                      await updateDoc(postRef, { likes: arrayUnion(user.uid) });
+                  }
+                  // UI akan otomatis ter-update oleh onSnapshot
+              } catch (err) {
+                  console.error("Gagal update like:", err);
+                  showModalMessage("Gagal", "Gagal memperbarui suka.");
+              }
+          });
+          
+          // --- Logika untuk Render & Balas Komentar (TETAP SAMA) ---
           
           const commentsArea = div.querySelector(".comments-area");
           const commentsContainer = commentsArea.querySelector(".comments");
@@ -1022,7 +1057,6 @@
           const commentInput = form.querySelector(".comment-input");
           const replyStatusEl = commentsArea.querySelector(".reply-status-container");
 
-          // Fungsi untuk mereset state balasan
           function resetReplyState() {
               form.dataset.replyToId = '';
               form.dataset.replyToName = '';
@@ -1030,9 +1064,7 @@
               replyStatusEl.innerHTML = '';
           }
           
-          // Partisi komentar
           const allComments = (data.comments || []).map((c, i) => {
-              // Retrofit ID untuk komentar lama
               if (!c.commentId) {
                   c.commentId = `c_${c.createdAt?.seconds || i}_${c.userId}`;
               }
@@ -1053,12 +1085,10 @@
               }
           });
 
-          // Render komentar utama
           mainComments.forEach(c => {
               const commentEl = createCommentElement(c);
               commentsContainer.appendChild(commentEl);
               
-              // Tambahkan listener untuk tombol "Balas"
               commentEl.querySelector('.reply-btn').addEventListener('click', () => {
                   form.dataset.replyToId = c.commentId;
                   form.dataset.replyToName = c.userName;
@@ -1069,11 +1099,10 @@
                   replyStatusEl.querySelector('.cancel-reply-btn').addEventListener('click', resetReplyState);
               });
               
-              // Render balasan
               const replies = repliesMap.get(c.commentId) || [];
               if (replies.length > 0) {
                   const repliesContainer = document.createElement('div');
-                  repliesContainer.className = 'ml-6 space-y-3 hidden'; // Mulai tersembunyi
+                  repliesContainer.className = 'ml-6 space-y-3 hidden'; 
                   
                   replies.forEach(r => {
                       const replyEl = createCommentElement(r, true); // true = isReply
@@ -1094,13 +1123,11 @@
           });
           
 
-          // --- Event Listener Tombol Buka/Tutup Komentar ---
           const commentToggleBtn = div.querySelector(".comment-toggle");
           commentToggleBtn.addEventListener('click', () => {
             commentsArea.classList.toggle('hidden');
           });
           
-          // --- Event Listener Form Submit Komentar ---
           form.addEventListener("submit", async (e) => {
             e.preventDefault();
             const commentText = commentInput.value.trim();
