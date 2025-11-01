@@ -119,7 +119,6 @@
         flex-direction: column;
         gap: 8px;
         padding: 12px;
-        /* background-color: #FFFFFF; <-- DIHAPUS, diatur oleh JS */
         transition: background-color 0.3s;
     }
     .chat-message-container { display: flex; flex-direction: column; }
@@ -160,6 +159,22 @@
         width: 60%;
         height: 60%;
     }
+    
+    /* Styling untuk dropdown hapus */
+    .delete-dropdown {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%; /* Muncul di bawah tombol */
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 10;
+        overflow: hidden;
+    }
+    .delete-dropdown.show {
+        display: block;
+    }
   </style>
 
   <script type="module">
@@ -178,8 +193,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    // PERUBAHAN: Menambahkan arrayRemove
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove } 
+    // PERUBAHAN: Menambahkan deleteDoc
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove, deleteDoc } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
@@ -361,6 +376,13 @@
         chatSettingsModal.style.display = 'flex';
       }
     }
+    
+    // PERUBAHAN: Listener global untuk menutup dropdown
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.delete-dropdown.show').forEach(el => {
+            el.classList.remove('show');
+        });
+    });
 
     // --- EVENT LISTENERS UI ---
     
@@ -754,7 +776,7 @@
             email: user.email,
             updatedAt: new Date(),
             avatarId: null,
-            isVerified: false // <-- Set verifikasi false untuk user baru
+            isVerified: false 
         });
         
         profileModal.style.display = "none";
@@ -772,7 +794,7 @@
         if (!name) return showModalMessage("Perhatian", "Nama tidak boleh kosong");
         
         try {
-            await saveProfileName(name); // Panggil fungsi update
+            await saveProfileName(name); 
             showModalMessage("Sukses", "Nama berhasil diperbarui!");
             navigateTo('Menu'); 
         } catch (err) {
@@ -842,7 +864,7 @@
       const postData = {
         text, userId: user.uid, userName, createdAt: new Date(), comments: [], likes: [] // <-- Tambahkan array likes
       };
-      // Tambahkan data snapshot
+      
       if (currentUserAvatarId) {
           postData.userAvatarId = currentUserAvatarId;
       }
@@ -940,7 +962,7 @@
           
           const userInfoHtml = `
             <div class="p-4">
-                <div class="flex items-center mb-3">
+                <div class="flex items-center mb-3 relative">
                     <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-2 ${avatarClasses}">
                         ${avatarInnerHtml}
                     </div>
@@ -953,7 +975,18 @@
                         </p>
                         <p class="text-xs text-gray-500">${time} · Publik</p>
                     </div>
-                    ${isOwnPost ? `<div class="text-xs text-fb-blue">Anda</div>` : ''}
+                    ${isOwnPost ? `
+                    <div class="ml-auto">
+                        <button type="button" class="delete-menu-btn text-gray-500 hover:text-gray-800 p-1 rounded-full">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+                        </button>
+                        <div class="delete-dropdown w-40">
+                            <button type="button" class="delete-post-btn w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                                Hapus Postingan
+                            </button>
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
           `;
@@ -1020,7 +1053,7 @@
           
           div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
           
-          // --- PERUBAHAN: Listener Tombol Suka ---
+          // --- Listener Tombol Suka ---
           const likeBtn = div.querySelector(".like-btn");
           likeBtn.addEventListener('click', async () => {
               const user = auth.currentUser;
@@ -1030,27 +1063,53 @@
               }
               
               const postRef = doc(db, "curhatan", id);
-              // Cek data terbaru dari snapshot
               const currentLikes = (docSnap.data().likes || []);
               const isCurrentlyLiked = currentLikes.includes(user.uid);
 
               try {
                   if (isCurrentlyLiked) {
-                      // Unlike
                       await updateDoc(postRef, { likes: arrayRemove(user.uid) });
                   } else {
-                      // Like
                       await updateDoc(postRef, { likes: arrayUnion(user.uid) });
                   }
-                  // UI akan otomatis ter-update oleh onSnapshot
               } catch (err) {
                   console.error("Gagal update like:", err);
                   showModalMessage("Gagal", "Gagal memperbarui suka.");
               }
           });
           
-          // --- Logika untuk Render & Balas Komentar (TETAP SAMA) ---
+          // --- PERUBAHAN: Listener Tombol Hapus ---
+          const deleteMenuBtn = div.querySelector(".delete-menu-btn");
+          const deleteDropdown = div.querySelector(".delete-dropdown");
+          const deletePostBtn = div.querySelector(".delete-post-btn");
+
+          if (isOwnPost && deleteMenuBtn) {
+              // Tampilkan/sembunyikan menu
+              deleteMenuBtn.addEventListener('click', (e) => {
+                  e.stopPropagation(); // Hentikan event agar tidak ditangkap document
+                  // Sembunyikan semua dropdown lain
+                  document.querySelectorAll('.delete-dropdown.show').forEach(el => {
+                      if(el !== deleteDropdown) el.classList.remove('show');
+                  });
+                  deleteDropdown.classList.toggle('show');
+              });
+
+              // Hapus postingan
+              deletePostBtn.addEventListener('click', async () => {
+                  if (confirm("Anda yakin ingin menghapus postingan ini? Tindakan ini tidak bisa dibatalkan.")) {
+                      try {
+                          await deleteDoc(doc(db, "curhatan", id));
+                          // Postingan akan hilang otomatis berkat onSnapshot
+                      } catch (err) {
+                          console.error("Gagal hapus postingan:", err);
+                          showModalMessage("Gagal", "Tidak dapat menghapus postingan.");
+                      }
+                  }
+                  deleteDropdown.classList.remove('show');
+              });
+          }
           
+          // --- Logika untuk Render & Balas Komentar (TETAP SAMA) ---
           const commentsArea = div.querySelector(".comments-area");
           const commentsContainer = commentsArea.querySelector(".comments");
           const form = commentsArea.querySelector(".commentForm");
@@ -1105,7 +1164,7 @@
                   repliesContainer.className = 'ml-6 space-y-3 hidden'; 
                   
                   replies.forEach(r => {
-                      const replyEl = createCommentElement(r, true); // true = isReply
+                      const replyEl = createCommentElement(r, true); 
                       repliesContainer.appendChild(replyEl);
                   });
                   
