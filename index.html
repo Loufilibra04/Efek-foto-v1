@@ -209,7 +209,7 @@
     let isCurrentUserVerified = false; 
     let userDocUnsubscribe = null; 
     let selectedChatThemeId = 'default'; 
-    let unsubscribeProfilePosts = null; // Listener untuk postingan profil
+    let unsubscribeProfilePosts = null; 
 
     // --- SVG Verifikasi ---
     const VERIFIED_BADGE_SVG = `
@@ -331,7 +331,7 @@
     const menuAvatarDisplay = document.getElementById('menuAvatarDisplay');
     const settingsAvatarDisplay = document.getElementById('settingsAvatarDisplay');
     
-    // PERUBAHAN: Elemen Halaman Profil
+    // Elemen Halaman Profil
     const profileView = document.getElementById('profileView');
     const profileBackBtn = document.getElementById('profileBackBtn');
     const profileHeaderName = document.getElementById('profileHeaderName');
@@ -361,7 +361,7 @@
       settingsView.style.display = 'none'; 
       avatarModal.style.display = 'none'; 
       chatSettingsModal.style.display = 'none'; 
-      profileView.style.display = 'none'; // <-- Tambah
+      profileView.style.display = 'none'; 
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -383,7 +383,7 @@
         avatarModal.style.display = 'flex';
       } else if (page === 'ChatSettings') { 
         chatSettingsModal.style.display = 'flex';
-      } else if (page === 'Profile') { // <-- Tambah
+      } else if (page === 'Profile') { 
         profileView.style.display = 'flex';
         profileView.classList.add('flex-col');
       }
@@ -436,9 +436,9 @@
     openAvatarModalBtn.addEventListener('click', () => navigateTo('Avatar'));
     avatarModalBackBtn.addEventListener('click', () => navigateTo('Settings'));
     
-    // PERUBAHAN: Navigasi Halaman Profil
+    // Navigasi Halaman Profil
     profileBackBtn.addEventListener('click', () => {
-        if (unsubscribeProfilePosts) unsubscribeProfilePosts(); // Hentikan listener
+        if (unsubscribeProfilePosts) unsubscribeProfilePosts(); 
         navigateTo('Main');
     });
 
@@ -738,7 +738,6 @@
         const checkmarkHtml = isVerified ? VERIFIED_BADGE_SVG : ''; 
 
         // 1. Main View (Header)
-        // userStatusDisplay.innerHTML = `${escapeHtml(displayName)}${checkmarkHtml}`; // <-- Dihapus
         mainAvatarDisplay.innerHTML = innerHtml;
         mainAvatarDisplay.className = `w-10 h-10 ${baseClasses} ${colorClasses} text-lg`;
         
@@ -751,7 +750,7 @@
         menuProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; 
         menuAvatarDisplay.innerHTML = innerHtml;
         menuAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} text-xl mr-4`;
-        // PERUBAHAN: Tambah listener ke avatar dan nama di menu
+        // Klik di Menu untuk buka profil sendiri
         menuAvatarDisplay.parentElement.onclick = () => openProfilePage(user.uid);
         
         // 4. Settings View
@@ -759,7 +758,7 @@
         settingsAvatarDisplay.innerHTML = innerHtml;
         settingsAvatarDisplay.className = `w-24 h-24 ${baseClasses} ${colorClasses} text-4xl mb-4`;
         settingsNameInput.value = displayName;
-        // PERUBAHAN: Tambah listener ke avatar dan nama di settings
+        // Klik di Settings untuk buka profil sendiri
         settingsAvatarDisplay.onclick = () => openProfilePage(user.uid);
         settingsProfileName.onclick = () => openProfilePage(user.uid);
         
@@ -851,7 +850,7 @@
       if (unsubscribeCurhatListener) unsubscribeCurhatListener();
       if (unsubscribeChatListener) unsubscribeChatListener();
       if (userDocUnsubscribe) userDocUnsubscribe(); 
-      if (unsubscribeProfilePosts) unsubscribeProfilePosts(); // <-- Tambah
+      if (unsubscribeProfilePosts) unsubscribeProfilePosts(); 
 
       if (user) {
         if (!user.displayName) {
@@ -953,7 +952,6 @@
         }
 
         snapshot.forEach((docSnap) => {
-          // PERUBAHAN: Panggil fungsi createPostElement
           const postElement = createPostElement(docSnap);
           curhatList.appendChild(postElement);
         });
@@ -963,7 +961,7 @@
       return unsub;
     }
     
-    // --- PERUBAHAN: Buat Elemen Postingan (Reusable) ---
+    // --- Buat Elemen Postingan (Reusable) ---
     function createPostElement(docSnap) {
         const data = docSnap.data();
         const id = docSnap.id;
@@ -976,7 +974,7 @@
         const feelingData = data.feeling;
         const postAvatarId = data.userAvatarId; 
         const postIsVerified = data.isVerified || false; 
-        const postUserId = data.userId; // <-- Ambil userId
+        const postUserId = data.userId; 
         
         let feelingDisplay = '';
         if (feelingData) {
@@ -1263,7 +1261,7 @@
           }
         });
         
-        return div; // Kembalikan elemen div yang sudah jadi
+        return div; 
     }
     
     // --- Helper: Buat Elemen Komentar ---
@@ -1307,7 +1305,6 @@
             ` : ''}
         `;
         
-        // PERUBAHAN: Tambah listener profil di nama komentator
         el.querySelector('.profile-link-btn').addEventListener('click', () => {
             openProfilePage(c.userId);
         });
@@ -1333,7 +1330,7 @@
         return "baru saja";
     }
 
-    // --- PERUBAHAN: Listener untuk Postingan di Halaman Profil ---
+    // --- Listener untuk Postingan di Halaman Profil ---
     function listenProfilePosts(userId) {
         const q = query(
             collection(db, "curhatan"), 
@@ -1362,16 +1359,14 @@
         return unsub;
     }
     
-    // --- PERUBAHAN: Fungsi untuk Membuka Halaman Profil ---
+    // --- Fungsi untuk Membuka Halaman Profil ---
     async function openProfilePage(userId) {
         if (!userId) return;
         
-        // Hentikan listener postingan profil lama
         if (unsubscribeProfilePosts) unsubscribeProfilePosts();
         
         profilePostList.innerHTML = '<p class="text-center text-gray-500 mt-10">Memuat postingan...</p>';
         
-        // Ambil data user untuk ditampilkan di header profil
         try {
             const userDoc = await getDoc(doc(db, "users", userId));
             if (userDoc.exists()) {
@@ -1382,7 +1377,9 @@
                 
                 profileHeaderName.textContent = displayName;
                 profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
-                profileViewEmail.textContent = userData.email || '';
+                
+                // PERUBAHAN: Terapkan sensor email
+                profileViewEmail.textContent = censorEmail(userData.email); 
                 
                 const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
                 const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
@@ -1405,7 +1402,6 @@
 
         navigateTo('Profile');
         
-        // Mulai listen ke postingan user ini
         unsubscribeProfilePosts = listenProfilePosts(userId);
     }
 
@@ -1459,6 +1455,18 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+    
+    // --- PERUBAHAN: Helper baru untuk sensor email ---
+    function censorEmail(email) {
+      if (!email || email.indexOf('@') === -1) {
+        return 'Email tersembunyi'; 
+      }
+      const [localPart, domain] = email.split('@');
+      if (localPart.length <= 3) {
+        return `${localPart.substring(0, 1)}***@${domain}`;
+      }
+      return `${localPart.substring(0, 3)}***@${domain}`;
     }
 
     // --- Helper: Modal Pesan (Mengganti alert()) ---
@@ -1895,7 +1903,7 @@
           </div>
           
           <h4 class="text-lg font-bold text-gray-800 my-4">Postingan Pengguna</h4>
-          <div id="profilePostList">
+          <div id="profilePostList" class="px-2">
               <p class="text-center text-gray-500 mt-10">Memuat postingan...</p>
           </div>
       </div>
