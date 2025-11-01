@@ -193,7 +193,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    // PERUBAHAN: Menambahkan deleteDoc
     import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove, deleteDoc } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
@@ -267,7 +266,7 @@
     const registerForm = document.getElementById("registerForm");
     const curhatForm = document.getElementById("curhatForm");
     const curhatList = document.getElementById("curhatList");
-    const userStatusDisplay = document.getElementById("userStatusDisplay");
+    // const userStatusDisplay = document.getElementById("userStatusDisplay"); // <-- Dihapus dari global
     const profileModal = document.getElementById("profileModal");
     const profileForm = document.getElementById("profileForm");
     const profileNameInput = document.getElementById("profileName");
@@ -377,7 +376,7 @@
       }
     }
     
-    // PERUBAHAN: Listener global untuk menutup dropdown
+    // Listener global untuk menutup dropdown
     document.addEventListener('click', () => {
         document.querySelectorAll('.delete-dropdown.show').forEach(el => {
             el.classList.remove('show');
@@ -720,7 +719,7 @@
         const checkmarkHtml = isVerified ? VERIFIED_BADGE_SVG : ''; 
 
         // 1. Main View (Header)
-        userStatusDisplay.innerHTML = `${escapeHtml(displayName)}${checkmarkHtml}`; 
+        // PERUBAHAN: Baris userStatusDisplay.innerHTML dihapus dari sini
         mainAvatarDisplay.innerHTML = innerHtml;
         mainAvatarDisplay.className = `w-10 h-10 ${baseClasses} ${colorClasses} text-lg`;
         
@@ -848,7 +847,7 @@
         renderAvatarList(); 
         renderChatThemeSelector(); 
       } else {
-        userStatusDisplay.textContent = "Guest";
+        // userStatusDisplay.textContent = "Guest"; <-- Dihapus
         navigateTo('Auth');
       }
     });
@@ -862,7 +861,7 @@
       if (!user) return showModalMessage("Kesalahan", "Harus login dulu");
       const userName = user.displayName || user.email;
       const postData = {
-        text, userId: user.uid, userName, createdAt: new Date(), comments: [], likes: [] // <-- Tambahkan array likes
+        text, userId: user.uid, userName, createdAt: new Date(), comments: [], likes: []
       };
       
       if (currentUserAvatarId) {
@@ -1001,7 +1000,6 @@
                 ${mapPlaceholder}
             </div>`;
           
-          // --- PERUBAHAN: Tombol Suka ---
           const likes = data.likes || [];
           const isLiked = auth.currentUser ? likes.includes(auth.currentUser.uid) : false;
           
@@ -1078,28 +1076,24 @@
               }
           });
           
-          // --- PERUBAHAN: Listener Tombol Hapus ---
+          // --- Listener Tombol Hapus ---
           const deleteMenuBtn = div.querySelector(".delete-menu-btn");
           const deleteDropdown = div.querySelector(".delete-dropdown");
           const deletePostBtn = div.querySelector(".delete-post-btn");
 
           if (isOwnPost && deleteMenuBtn) {
-              // Tampilkan/sembunyikan menu
               deleteMenuBtn.addEventListener('click', (e) => {
-                  e.stopPropagation(); // Hentikan event agar tidak ditangkap document
-                  // Sembunyikan semua dropdown lain
+                  e.stopPropagation(); 
                   document.querySelectorAll('.delete-dropdown.show').forEach(el => {
                       if(el !== deleteDropdown) el.classList.remove('show');
                   });
                   deleteDropdown.classList.toggle('show');
               });
 
-              // Hapus postingan
               deletePostBtn.addEventListener('click', async () => {
                   if (confirm("Anda yakin ingin menghapus postingan ini? Tindakan ini tidak bisa dibatalkan.")) {
                       try {
                           await deleteDoc(doc(db, "curhatan", id));
-                          // Postingan akan hilang otomatis berkat onSnapshot
                       } catch (err) {
                           console.error("Gagal hapus postingan:", err);
                           showModalMessage("Gagal", "Tidak dapat menghapus postingan.");
@@ -1109,7 +1103,8 @@
               });
           }
           
-          // --- Logika untuk Render & Balas Komentar (TETAP SAMA) ---
+          // --- Logika untuk Render & Balas Komentar ---
+          
           const commentsArea = div.querySelector(".comments-area");
           const commentsContainer = commentsArea.querySelector(".comments");
           const form = commentsArea.querySelector(".commentForm");
@@ -1457,7 +1452,7 @@
                     <span>?</span>
                 </div>
                 <button id="goToPostBtn" class="flex-grow text-left bg-fb-gray p-2.5 rounded-full text-gray-600 hover:bg-gray-200 transition duration-150">
-                    Apa yang Anda pikirkan? (<span id="userStatusDisplay" class="flex items-center">...</span>)
+                    Apa yang Anda pikirkan?
                 </button>
             </div>
             <div class="border-t border-gray-200 mt-3 pt-3 flex justify-around">
