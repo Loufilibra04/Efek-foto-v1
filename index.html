@@ -191,12 +191,11 @@
     let selectedFeeling = null; 
     let selectedBackground = null; 
     let currentUserAvatarId = null; 
-    let isCurrentUserVerified = false; // <-- State Verifikasi
+    let isCurrentUserVerified = false; 
     let userDocUnsubscribe = null; 
     let selectedChatThemeId = 'default'; 
 
     // --- SVG Verifikasi ---
-    // PERUBAHAN DI SINI: SVG diganti dengan yang bulat
     const VERIFIED_BADGE_SVG = `
       <svg class="w-4 h-4 text-fb-blue ml-1 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/>
@@ -500,7 +499,6 @@
             const actionText = selectedFeeling.type === 'feeling' ? 'merasa' : 'sedang';
             feelingHTML = ` ${escapeHtml(selectedFeeling.emoji)} <span class="font-normal">${actionText} ${escapeHtml(selectedFeeling.text)}.</span>`;
         }
-        // Tambahkan cek verifikasi
         const checkmarkHtml = isCurrentUserVerified ? VERIFIED_BADGE_SVG : '';
         postUsernameText.innerHTML = `<span>${escapeHtml(name)}</span>${checkmarkHtml}${feelingHTML}`;
     }
@@ -684,10 +682,10 @@
         
         const displayName = user.displayName || user.email;
         const avatarId = userData.avatarId || null;
-        const isVerified = userData.isVerified || false; // <-- Ambil status verifikasi
+        const isVerified = userData.isVerified || false; 
         
         currentUserAvatarId = avatarId; 
-        isCurrentUserVerified = isVerified; // <-- Set state global
+        isCurrentUserVerified = isVerified; 
         
         const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
         const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
@@ -696,25 +694,25 @@
         const baseClasses = "rounded-full flex items-center justify-center font-bold";
         const colorClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
         
-        const checkmarkHtml = isVerified ? VERIFIED_BADGE_SVG : ''; // <-- Buat HTML centang
+        const checkmarkHtml = isVerified ? VERIFIED_BADGE_SVG : ''; 
 
         // 1. Main View (Header)
-        userStatusDisplay.innerHTML = `${escapeHtml(displayName)}${checkmarkHtml}`; // <-- Terapkan
+        userStatusDisplay.innerHTML = `${escapeHtml(displayName)}${checkmarkHtml}`; 
         mainAvatarDisplay.innerHTML = innerHtml;
         mainAvatarDisplay.className = `w-10 h-10 ${baseClasses} ${colorClasses} text-lg`;
         
         // 2. Post View
         postAvatarDisplay.innerHTML = innerHtml;
         postAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} text-xl mr-3`;
-        renderPostHeader(); // Update nama + feeling + centang
+        renderPostHeader(); 
         
         // 3. Menu View
-        menuProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; // <-- Terapkan
+        menuProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; 
         menuAvatarDisplay.innerHTML = innerHtml;
         menuAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} text-xl mr-4`;
         
         // 4. Settings View
-        settingsProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; // <-- Terapkan
+        settingsProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; 
         settingsAvatarDisplay.innerHTML = innerHtml;
         settingsAvatarDisplay.className = `w-24 h-24 ${baseClasses} ${colorClasses} text-4xl mb-4`;
         settingsNameInput.value = displayName;
@@ -919,7 +917,7 @@
           const locationData = data.location;
           const feelingData = data.feeling;
           const postAvatarId = data.userAvatarId; 
-          const postIsVerified = data.isVerified || false; // <-- Ambil status verifikasi post
+          const postIsVerified = data.isVerified || false; 
           
           let feelingDisplay = '';
           if (feelingData) {
@@ -937,7 +935,7 @@
           const avatarInnerHtml = avatarData ? avatarData.svg : displayName[0].toUpperCase();
           const avatarClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
           
-          const postCheckmarkHtml = postIsVerified ? VERIFIED_BADGE_SVG : ''; // <-- Buat HTML centang
+          const postCheckmarkHtml = postIsVerified ? VERIFIED_BADGE_SVG : ''; 
           
           const userInfoHtml = `
             <div class="p-4">
@@ -996,34 +994,16 @@
           const commentsHtml = `
             <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
                 <div class="comments space-y-3 mb-4">
-                  ${(data.comments || []).map(c => {
-                    const commenterAvatarData = DUMMY_AVATARS.find(a => a.id === c.userAvatarId);
-                    const commenterAvatarHtml = commenterAvatarData ? commenterAvatarData.svg : (c.userName ? c.userName[0].toUpperCase() : 'A');
-                    const commenterAvatarClasses = commenterAvatarData ? "bg-gray-200 text-gray-700" : "bg-gray-300";
-                    const commenterIsVerified = c.isVerified || false; // <-- Ambil status verifikasi komentar
-                    const commenterCheckmarkHtml = commenterIsVerified ? VERIFIED_BADGE_SVG : ''; // <-- Buat HTML centang
-                    
-                    return `
-                    <div class="flex items-start">
-                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mr-2 ${commenterAvatarClasses} shrink-0">
-                           ${commenterAvatarHtml.replace('avatar-icon', 'avatar-icon-sm')}
-                        </div>
-                        <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
-                            <p class="font-semibold text-sm text-gray-800 flex items-center">
-                                <span>${escapeHtml(c.userName || c.user)}</span>
-                                ${commenterCheckmarkHtml}
-                            </p>
-                            <p class="text-sm text-gray-700 break-words">${escapeHtml(c.text)}</p>
-                        </div>
-                    </div>
-                  `}).join("")}
-                </div>
+                  </div>
+                
+                <div class="reply-status-container text-sm text-gray-500 mb-2 hidden"></div>
+                
                 <form class="commentForm flex gap-2 items-center">
                     <div class="currentUserCommentAvatar w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${userAvatarClasses}">
                         ${userAvatarInnerHtml}
                     </div>
                     <input type="text" placeholder="Tulis komentar..." required
-                        class="flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
+                        class="comment-input flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
                     >
                     <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m8 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -1033,43 +1013,129 @@
           `;
           
           div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
-            
-          const commentToggleBtn = div.querySelector(".comment-toggle");
+          
+          // --- Logika untuk Render & Balas Komentar ---
+          
           const commentsArea = div.querySelector(".comments-area");
-          if(commentToggleBtn) commentToggleBtn.addEventListener('click', () => {
+          const commentsContainer = commentsArea.querySelector(".comments");
+          const form = commentsArea.querySelector(".commentForm");
+          const commentInput = form.querySelector(".comment-input");
+          const replyStatusEl = commentsArea.querySelector(".reply-status-container");
+
+          // Fungsi untuk mereset state balasan
+          function resetReplyState() {
+              form.dataset.replyToId = '';
+              form.dataset.replyToName = '';
+              replyStatusEl.classList.add('hidden');
+              replyStatusEl.innerHTML = '';
+          }
+          
+          // Partisi komentar
+          const allComments = (data.comments || []).map((c, i) => {
+              // Retrofit ID untuk komentar lama
+              if (!c.commentId) {
+                  c.commentId = `c_${c.createdAt?.seconds || i}_${c.userId}`;
+              }
+              return c;
+          });
+          
+          const repliesMap = new Map();
+          const mainComments = [];
+          
+          allComments.forEach(c => {
+              if (c.replyTo) {
+                  if (!repliesMap.has(c.replyTo)) {
+                      repliesMap.set(c.replyTo, []);
+                  }
+                  repliesMap.get(c.replyTo).push(c);
+              } else {
+                  mainComments.push(c);
+              }
+          });
+
+          // Render komentar utama
+          mainComments.forEach(c => {
+              const commentEl = createCommentElement(c);
+              commentsContainer.appendChild(commentEl);
+              
+              // Tambahkan listener untuk tombol "Balas"
+              commentEl.querySelector('.reply-btn').addEventListener('click', () => {
+                  form.dataset.replyToId = c.commentId;
+                  form.dataset.replyToName = c.userName;
+                  replyStatusEl.innerHTML = `Membalas <strong>${escapeHtml(c.userName)}</strong> <button type="button" class="cancel-reply-btn text-red-500 ml-2">[Batal]</button>`;
+                  replyStatusEl.classList.remove('hidden');
+                  commentInput.focus();
+                  
+                  replyStatusEl.querySelector('.cancel-reply-btn').addEventListener('click', resetReplyState);
+              });
+              
+              // Render balasan
+              const replies = repliesMap.get(c.commentId) || [];
+              if (replies.length > 0) {
+                  const repliesContainer = document.createElement('div');
+                  repliesContainer.className = 'ml-6 space-y-3 hidden'; // Mulai tersembunyi
+                  
+                  replies.forEach(r => {
+                      const replyEl = createCommentElement(r, true); // true = isReply
+                      repliesContainer.appendChild(replyEl);
+                  });
+                  
+                  const viewRepliesBtn = document.createElement('button');
+                  viewRepliesBtn.className = 'view-replies-btn text-sm font-semibold text-gray-600 hover:underline ml-10 mt-1';
+                  viewRepliesBtn.textContent = `Lihat ${replies.length} balasan...`;
+                  viewRepliesBtn.addEventListener('click', () => {
+                      repliesContainer.classList.toggle('hidden');
+                      viewRepliesBtn.textContent = repliesContainer.classList.contains('hidden') ? `Lihat ${replies.length} balasan...` : 'Sembunyikan balasan';
+                  });
+                  
+                  commentsContainer.appendChild(viewRepliesBtn);
+                  commentsContainer.appendChild(repliesContainer);
+              }
+          });
+          
+
+          // --- Event Listener Tombol Buka/Tutup Komentar ---
+          const commentToggleBtn = div.querySelector(".comment-toggle");
+          commentToggleBtn.addEventListener('click', () => {
             commentsArea.classList.toggle('hidden');
           });
           
-          const form = div.querySelector(".commentForm");
+          // --- Event Listener Form Submit Komentar ---
           form.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const commentInput = e.target.querySelector('input[type="text"]');
             const commentText = commentInput.value.trim();
             if (!commentText) return;
             const user = auth.currentUser;
             if (!user) return showModalMessage("Kesalahan", "Harus login dulu untuk berkomentar!");
             
+            const newCommentId = "c_" + Date.now() + Math.random().toString(36).substring(2, 9);
+            const parentId = form.dataset.replyToId || null;
+            const parentName = form.dataset.replyToName || null;
+            
             const commentData = {
+                commentId: newCommentId,
+                replyTo: parentId,
+                replyToName: parentName,
                 userId: user.uid,
                 userName: user.displayName || user.email,
                 text: commentText,
-                createdAt: new Date()
+                createdAt: new Date(),
+                userAvatarId: currentUserAvatarId,
+                isVerified: isCurrentUserVerified
             };
-            if (currentUserAvatarId) {
-                commentData.userAvatarId = currentUserAvatarId;
-            }
-            commentData.isVerified = isCurrentUserVerified; // <-- Simpan status verifikasi
             
             try {
               await updateDoc(doc(db, "curhatan", id), {
                 comments: arrayUnion(commentData)
               });
               e.target.reset();
+              resetReplyState();
             } catch (err) {
               console.error("Gagal kirim komentar:", err);
               showModalMessage("Gagal kirim komentar", err.message);
             }
           });
+          
           curhatList.appendChild(div);
         });
       }, (err) => {
@@ -1077,6 +1143,66 @@
       });
       return unsub;
     }
+    
+    // --- Helper: Buat Elemen Komentar ---
+    function createCommentElement(c, isReply = false) {
+        const commenterAvatarData = DUMMY_AVATARS.find(a => a.id === c.userAvatarId);
+        const commenterAvatarHtml = commenterAvatarData ? commenterAvatarData.svg : (c.userName ? c.userName[0].toUpperCase() : 'A');
+        const commenterAvatarClasses = commenterAvatarData ? "bg-gray-200 text-gray-700" : "bg-gray-300";
+        const commenterIsVerified = c.isVerified || false;
+        const commenterCheckmarkHtml = commenterIsVerified ? VERIFIED_BADGE_SVG : '';
+        
+        const timeAgo = c.createdAt?.seconds ? formatTimeAgo(c.createdAt.seconds * 1000) : 'baru saja';
+        
+        let textContent = escapeHtml(c.text);
+        if (isReply && c.replyToName) {
+            textContent = `<strong class="text-fb-blue mr-1">@${escapeHtml(c.replyToName)}</strong> ${textContent}`;
+        }
+        
+        const el = document.createElement('div');
+        el.className = 'comment-container';
+        el.innerHTML = `
+            <div class="flex items-start">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mr-2 ${commenterAvatarClasses} shrink-0">
+                   ${commenterAvatarHtml.replace('avatar-icon', 'avatar-icon-sm')}
+                </div>
+                <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
+                    <p class="font-semibold text-sm text-gray-800 flex items-center">
+                        <span>${escapeHtml(c.userName || c.user)}</span>
+                        ${commenterCheckmarkHtml}
+                    </p>
+                    <p class="text-sm text-gray-700 break-words">${textContent}</p>
+                </div>
+            </div>
+            ${!isReply ? `
+            <div class="flex items-center text-xs font-semibold text-gray-600 gap-3 ml-9 mt-1">
+                <span class="font-normal">${timeAgo}</span>
+                <button class="hover:underline">Suka</button>
+                <button class="reply-btn hover:underline">Balas</button>
+            </div>
+            ` : ''}
+        `;
+        return el;
+    }
+    
+    // --- Helper: Format Waktu ---
+    function formatTimeAgo(timestamp) {
+        const now = Date.now();
+        const seconds = Math.floor((now - timestamp) / 1000);
+        
+        let interval = seconds / 31536000; // tahun
+        if (interval > 1) return Math.floor(interval) + " thn";
+        interval = seconds / 2592000; // bulan
+        if (interval > 1) return Math.floor(interval) + " bln";
+        interval = seconds / 86400; // hari
+        if (interval > 1) return Math.floor(interval) + " hr";
+        interval = seconds / 3600; // jam
+        if (interval > 1) return Math.floor(interval) + " jam";
+        interval = seconds / 60; // menit
+        if (interval > 1) return Math.floor(interval) + " mnt";
+        return "baru saja";
+    }
+
 
     // --- LISTEN REAL-TIME CHAT GLOBAL ---
     function listenGlobalChat() {
