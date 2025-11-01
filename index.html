@@ -139,7 +139,7 @@
     
     /* Styling untuk text area dengan background */
     textarea.with-background {
-        padding-top: 10%; /* Dorong teks ke tengah */
+        /* padding-top: 10%; (DIHAPUS untuk vertical centering) */
         background-size: cover;
         background-position: center;
     }
@@ -453,6 +453,7 @@
     function applyPostViewBackground() {
         const postBody = curhatForm.parentElement; // Div flex-grow
         const textarea = curhatForm.text;
+        const form = curhatForm; // <-- PERUBAHAN
         
         // Dapatkan bg yang dipilih, atau default jika null
         const bg = selectedBackground || DUMMY_BACKGROUNDS[0]; 
@@ -465,19 +466,25 @@
         });
         // Hapus class styling manual
         textarea.classList.remove('text-center', 'text-left', 'with-background', 'bg-transparent');
+        textarea.classList.remove('flex-grow'); // <-- PERUBAHAN
         postBody.classList.remove('bg-white', 'p-4', 'flex', 'items-center', 'justify-center');
+        form.classList.remove('flex-grow', 'flex-col'); // <-- PERUBAHAN
         
         if (bg.id === 'default') {
             // Tampilan Teks Polos
             postUserAvatarBlock.classList.remove('hidden');
             postBody.classList.add('bg-white', 'p-4');
+            form.classList.add('flex-grow', 'flex-col'); // <-- PERUBAHAN
             textarea.classList.add(...bg.textStyle.split(' '), 'text-left');
+            textarea.classList.add('flex-grow'); // <-- PERUBAHAN
             textarea.placeholder = 'Apa yang Anda pikirkan?';
         } else {
             // Tampilan Teks dengan Background
             postUserAvatarBlock.classList.add('hidden');
             postBody.classList.add(...bg.css.split(' '), 'flex', 'items-center', 'justify-center');
+            // form TIDAK punya flex-grow
             textarea.classList.add(...bg.textStyle.split(' '), 'text-center', 'with-background', 'bg-transparent');
+            // textarea TIDAK punya flex-grow
             textarea.placeholder = 'Mulai mengetik...';
         }
     }
@@ -742,24 +749,27 @@
             ` : '';
             
           const div = document.createElement("div");
-          // Hapus shadow jika postingan background
-          div.className = `post-card mb-3 ${!backgroundData ? 'shadow-md' : ''}`; 
+          // --- PERUBAHAN ---
+          // Kartu postingan SELALU punya shadow
+          div.className = `post-card mb-3 shadow-md`; 
           
           
           // Bagian Info Pengguna (Selalu ada)
+          // --- PERUBAHAN ---
+          // Hapus logic `pb-0` dan warna teks. Selalu di background putih.
           const userInfoHtml = `
-            <div class="p-4 ${backgroundData ? 'pb-0' : ''}">
+            <div class="p-4">
                 <div class="flex items-center mb-3">
                     <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${displayName[0]}</div>
                     <div class="flex-grow">
-                        <p class="font-semibold ${backgroundData ? 'text-white text-shadow' : 'text-gray-900'}">
+                        <p class="font-semibold text-gray-900">
                             ${escapeHtml(displayName)} 
                             ${feelingDisplay}
                             ${!backgroundData && locationData ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a>` : ''}
                         </p>
-                        <p class="text-xs ${backgroundData ? 'text-gray-200' : 'text-gray-500'}">${time} · Publik</p>
+                        <p class="text-xs text-gray-500">${time} · Publik</p>
                     </div>
-                    ${isOwnPost ? `<div class="text-xs ${backgroundData ? 'text-white' : 'text-fb-blue'}">Anda</div>` : ''}
+                    ${isOwnPost ? `<div class="text-xs text-fb-blue">Anda</div>` : ''}
                 </div>
             </div>
           `;
@@ -767,7 +777,9 @@
           // Bagian Konten Postingan (Teks polos ATAU background)
           const postContentHtml = backgroundData ?
             // Tampilan Background
-            `<div class="${backgroundData.css} ${backgroundData.textStyle} aspect-video flex items-center justify-center p-6 text-center whitespace-pre-wrap">
+            // --- PERUBAHAN ---
+            // Tambahkan `rounded-lg` jika ada background, dan `mx-4` agar ada padding
+            `<div class="${backgroundData.css} ${backgroundData.textStyle} aspect-video flex items-center justify-center p-6 text-center whitespace-pre-wrap mx-4 rounded-lg">
                 ${escapeHtml(data.text)}
             </div>`
             :
@@ -778,18 +790,20 @@
             </div>`;
           
           // Bagian Tombol (Paddingnya beda)
+          // --- PERUBAHAN ---
+          // Hapus semua logic `backgroundData`. Tombol selalu di background putih.
           const buttonsHtml = `
-            <div class="${backgroundData ? 'p-4' : 'p-4 pt-0'}">
-                <div class="flex justify-around border-t ${backgroundData ? 'border-gray-100 border-opacity-30' : 'border-gray-200'} mt-4 pt-2">
-                    <button class="flex items-center ${backgroundData ? 'text-gray-200 hover:text-white' : 'text-gray-600 hover:text-fb-blue'} transition duration-150 p-2 rounded-lg">
+            <div class="p-4 pt-0">
+                <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
                         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
                         Suka
                     </button>
-                    <button class="comment-toggle flex items-center ${backgroundData ? 'text-gray-200 hover:text-white' : 'text-gray-600 hover:text-fb-blue'} transition duration-150 p-2 rounded-lg">
+                    <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
                         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                         Komentar (${(data.comments || []).length})
                     </button>
-                    <button class="flex items-center ${backgroundData ? 'text-gray-200 hover:text-white' : 'text-gray-600 hover:text-fb-blue'} transition duration-150 p-2 rounded-lg">
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
                         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
                         Bagikan
                     </button>
@@ -798,15 +812,17 @@
           `;
           
           // Bagian Komentar (Selalu ada)
+          // --- PERUBAHAN ---
+          // Hapus semua logic `backgroundData`. Komentar selalu di background putih/abu.
           const commentsHtml = `
-            <div class="comments-area border-t ${backgroundData ? 'border-gray-100 border-opacity-30' : 'border-gray-100'} p-4 ${backgroundData ? 'bg-black bg-opacity-10' : 'bg-gray-50'} hidden">
+            <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
                 <div class="comments space-y-3 mb-4">
                   ${(data.comments || []).map(c => `
                     <div class="flex items-start">
                         <div class="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold mr-2">${c.userName ? c.userName[0] : 'A'}</div>
-                        <div class="${backgroundData ? 'bg-black bg-opacity-20' : 'bg-gray-200'} p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
-                            <p class="font-semibold text-sm ${backgroundData ? 'text-gray-100' : 'text-gray-800'}">${escapeHtml(c.userName || c.user)}</p>
-                            <p class="text-sm ${backgroundData ? 'text-gray-50' : 'text-gray-700'} break-words">${escapeHtml(c.text)}</p>
+                        <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
+                            <p class="font-semibold text-sm text-gray-800">${escapeHtml(c.userName || c.user)}</p>
+                            <p class="text-sm text-gray-700 break-words">${escapeHtml(c.text)}</p>
                         </div>
                     </div>
                   `).join("")}
@@ -816,7 +832,7 @@
                         ${auth.currentUser ? auth.currentUser.displayName[0] : 'A'}
                     </div>
                     <input type="text" placeholder="Tulis komentar..." required
-                        class="flex-grow px-3 py-2 text-sm border-gray-300 ${backgroundData ? 'bg-gray-800 text-white' : 'bg-white'} rounded-full focus:ring-0 focus:border-fb-blue"
+                        class="flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
                     >
                     <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m8 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -825,22 +841,10 @@
             </div>
           `;
           
-          // Gabungkan semua
-          if (backgroundData) {
-              div.innerHTML = postContentHtml; // Teks ada di dalam background
-              // Sisipkan info pengguna di dalam div background
-              const bgDiv = div.querySelector(`.${backgroundData.css.split(' ')[0]}`);
-              bgDiv.insertAdjacentHTML('beforebegin', userInfoHtml);
-              // Sisipkan tombol dan komentar setelah background
-              bgDiv.insertAdjacentHTML('afterend', buttonsHtml + commentsHtml);
-              // Tambahkan class css background ke div utama
-              div.classList.add(...backgroundData.css.split(' '));
-              div.style.padding = '0'; // Hapus padding default
-          } else {
-              // Tampilan standar
-              div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
-          }
-            
+          // --- PERUBAHAN ---
+          // Hapus logic if/else. Selalu gabungkan dengan cara yang sama.
+          div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
+          
           
           // --- Event Listener Komentar (Tidak Berubah) ---
           const commentToggleBtn = div.querySelector(".comment-toggle");
@@ -934,19 +938,21 @@
             const mapPlaceholder = (!backgroundData && data.location)
               ? `<div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative opacity-50"><div class="aspect-video flex items-center justify-center ..."><div class="p-4"><svg class="w-8 h-8 ..."></svg></div></div></div>` : '';
 
+            // --- PERUBAHAN ---
+            // Sesuaikan dengan logic baru di `listenCurhatan`
             const userInfoHtml = `
-              <div class="p-4 ${backgroundData ? 'pb-0' : ''}">
+              <div class="p-4">
                   <div class="flex items-center mb-3">
                       <div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-lg mr-2">${data.name[0]}</div>
                       <div class="flex-grow">
-                          <p class="font-semibold ${backgroundData ? 'text-white text-shadow' : 'text-gray-900'}">${data.name} ${feelingDisplay} ${locationDisplay}</p>
-                          <p class="text-xs ${backgroundData ? 'text-gray-200' : 'text-gray-500'}">${data.time} · Dummy</p>
+                          <p class="font-semibold text-gray-900">${data.name} ${feelingDisplay} ${locationDisplay}</p>
+                          <p class="text-xs text-gray-500">${data.time} · Dummy</p>
                       </div>
                   </div>
               </div>
             `;
             const postContentHtml = backgroundData ?
-              `<div class="${backgroundData.css} ${backgroundData.textStyle} aspect-video flex items-center justify-center p-6 text-center whitespace-pre-wrap rounded-b-lg">
+              `<div class="${backgroundData.css} ${backgroundData.textStyle} aspect-video flex items-center justify-center p-6 text-center whitespace-pre-wrap mx-4 rounded-lg">
                   ${escapeHtml(data.text)}
               </div>`
               :
@@ -956,8 +962,8 @@
               </div>`;
             
             const buttonsHtml = `
-              <div class="${backgroundData ? 'p-4' : 'p-4 pt-0'}">
-                  <div class="flex justify-around border-t ${backgroundData ? 'border-gray-100 border-opacity-30' : 'border-gray-200'} mt-4 pt-2 text-gray-400">
+              <div class="p-4 pt-0">
+                  <div class="flex justify-around border-t border-gray-200 mt-4 pt-2 text-gray-400">
                       <button class="p-2">Suka</button>
                       <button class="p-2">Komentar</button>
                       <button class="p-2">Bagikan</button>
@@ -965,13 +971,10 @@
               </div>
             `;
 
-            let finalHtml = '';
-            if (backgroundData) {
-                finalHtml = `<div class="post-card mb-3 opacity-80 ${backgroundData.css} rounded-lg overflow-hidden">${userInfoHtml}${postContentHtml}${buttonsHtml}</div>`;
-            } else {
-                finalHtml = `<div class="post-card mb-3 shadow-md opacity-80">${userInfoHtml}${postContentHtml}${buttonsHtml}</div>`;
-            }
-            return finalHtml;
+            // --- PERUBAHAN ---
+            // Selalu gabungkan dengan cara yang sama
+            return `<div class="post-card mb-3 shadow-md opacity-80">${userInfoHtml}${postContentHtml}${buttonsHtml}</div>`;
+
         }).join("");
     }
 
@@ -1135,10 +1138,8 @@
     </header>
 
     
-
-<div class="flex-grow p-4 overflow-y-auto bg-white"> 
-        <div id="postUserAvatarBlock" class="flex items-center mb-6">
-            <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
+<div class="flex-grow overflow-y-auto bg-white"> 
+        <div id="postUserAvatarBlock" class="flex items-center mb-6 p-4 pb-0"> <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
                 <span id="postAvatarLetter" class="font-semibold text-white">?</span>
             </div>
             <div>
@@ -1152,11 +1153,10 @@
             </div>
         </div>
 
-        <form id="curhatForm" class="flex-grow flex flex-col">
+        <form id="curhatForm" class="flex flex-col">
             <textarea name="text" rows="10" placeholder="Apa yang Anda pikirkan?" required
-              class="flex-grow text-xl p-0 border-none resize-none focus:ring-0 focus:border-transparent"
-            ></textarea>
-        </form>
+              class="p-4 pt-0 border-none resize-none focus:ring-0 focus:border-transparent"
+            ></textarea> </form>
         
     </div>
 
