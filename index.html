@@ -71,8 +71,8 @@
       z-index:1000; 
     }
     
-    /* (PERUBAHAN) Menambahkan profileView ke grup modal fullscreen */
-    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #profileView {
+    /* Modal fullscreen */
+    #locationModal, #feelingModal, #chatView, #menuView, #settingsView {
         background: #fff;
         display: none; 
         position: fixed;
@@ -83,17 +83,13 @@
         z-index: 2000; 
     }
     
-    #chatView, #menuView, #settingsView, #profileView {
+    #chatView, #menuView, #settingsView {
         z-index: 3000; 
         background-color: #F0F2F5; /* Latar belakang abu-abu */
     }
     /* Khusus header modal, agar latar belakang putih */
     .modal-header {
         background-color: #FFFFFF;
-    }
-    /* (BARU) Tombol profil di feed */
-    .profile-click-trigger {
-        cursor: pointer;
     }
 
     .post-card {
@@ -141,8 +137,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    // (PERUBAHAN) Menambahkan getDoc, where, limitToLast
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, where } 
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
@@ -150,20 +145,21 @@
     const db = getFirestore(app);
 
     // --- State Aplikasi ---
-    let currentPage = 'Auth'; // Auth, Main, Post, Chat, Menu, Settings, Profile (BARU)
+    let currentPage = 'Auth'; // Auth, Main, Post, Chat, Menu, Settings
     let selectedLocation = null; 
     let selectedFeeling = null; 
     
     // --- Data Dummy ---
-    // (Saya persingkat agar tidak terlalu panjang di contoh)
     const DUMMY_LOCATIONS = [
       { name: "Pantai Bahari Jeneponto", detail: "Jeneponto · Jeneponto, South Sulawesi" },
+      { name: "Makassar", detail: "Kota Makassar, Sulawesi Selatan, ID" },
     ];
     const DUMMY_FEELINGS = [
-      { emoji: "😊", text: "senang" }, { emoji: "😇", text: "terberkati" },
+      { emoji: "😊", text: "senang" }, { emoji: "😇", text: "terberkati" }, { emoji: "🥰", text: "dicintai" },
+      { emoji: "😥", text: "sedih" }, { emoji: "😍", text: "penuh cinta" }, { emoji: "🙏", text: "bersyukur" },
     ];
     const DUMMY_ACTIVITIES = [
-        { emoji: "🎉", text: "merayakan..." }, { emoji: "✈️", text: "bepergian ke..." },
+        { emoji: "🎉", text: "merayakan..." }, { emoji: "✈️", text: "bepergian ke..." }, { emoji: "☕", text: "minum kopi" },
     ];
 
 
@@ -208,9 +204,8 @@
     // Elemen Menu & Pengaturan
     const menuView = document.getElementById("menuView");
     const settingsView = document.getElementById("settingsView");
-    const openMenuBtn = document.getElementById("openMenuBtn");
+    const openMenuBtn = document.getElementById("openMenuBtn"); // Menggantikan logoutBtn
     const menuBackBtn = document.getElementById("menuBackBtn");
-    const menuProfileBtn = document.getElementById("menuProfileBtn"); // (BARU) Tombol profil di menu
     const menuSettingsBtn = document.getElementById("menuSettingsBtn");
     const menuLogoutBtn = document.getElementById("menuLogoutBtn");
     const menuProfileName = document.getElementById("menuProfileName");
@@ -219,19 +214,9 @@
     const settingsNameInput = document.getElementById("settingsNameInput");
     const settingsProfileName = document.getElementById("settingsProfileName");
 
-    // (BARU) Elemen Halaman Profil
-    const profileView = document.getElementById("profileView");
-    const profileBackBtn = document.getElementById("profileBackBtn");
-    const profileViewName = document.getElementById("profileViewName");
-    const profileViewFriendCount = document.getElementById("profileViewFriendCount");
-    const profileViewBio = document.getElementById("profileViewBio");
-    const profileButtonContainer = document.getElementById("profileButtonContainer");
-    const profilePostList = document.getElementById("profilePostList");
-
 
     // --- Fungsi Navigasi Halaman ---
-    // (PERUBAHAN) Menambahkan 'data' untuk membawa info (cth: userId)
-    async function navigateTo(page, data = null) {
+    function navigateTo(page) {
       currentPage = page;
       authView.style.display = 'none';
       mainView.style.display = 'none';
@@ -240,14 +225,7 @@
       feelingModal.style.display = 'none'; 
       chatView.style.display = 'none';
       menuView.style.display = 'none'; 
-      settingsView.style.display = 'none';
-      profileView.style.display = 'none'; // (BARU)
-
-      // (BARU) Hentikan listener postingan profil jika pindah halaman
-      if (page !== 'Profile' && unsubscribeProfilePostsListener) {
-          unsubscribeProfilePostsListener();
-          unsubscribeProfilePostsListener = null;
-      }
+      settingsView.style.display = 'none'; 
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -263,17 +241,13 @@
         menuView.style.display = 'flex';
       } else if (page === 'Settings') { 
         settingsView.style.display = 'flex';
-      } else if (page === 'Profile') { // (BARU)
-        profileView.style.display = 'flex';
-        if (data && data.userId) {
-            await renderProfileView(data.userId); // Panggil render profil
-        }
       }
     }
 
     // --- EVENT LISTENERS UI ---
     
     openMenuBtn.addEventListener('click', () => navigateTo('Menu')); 
+    
     document.getElementById('goToPostBtn').addEventListener('click', () => {
         selectedLocation = null;
         selectedFeeling = null; 
@@ -296,35 +270,32 @@
     // Navigasi Menu & Pengaturan
     menuBackBtn.addEventListener('click', () => navigateTo('Main'));
     menuSettingsBtn.addEventListener('click', () => navigateTo('Settings'));
-    menuLogoutBtn.addEventListener('click', () => signOut(auth)); 
+    menuLogoutBtn.addEventListener('click', () => signOut(auth)); // Tombol logout baru
     settingsBackBtn.addEventListener('click', () => navigateTo('Menu'));
-    
-    // (BARU) Tombol profil di Menu
-    menuProfileBtn.addEventListener('click', () => {
-        if (auth.currentUser) {
-            navigateTo('Profile', { userId: auth.currentUser.uid });
-        }
-    });
-    
-    // (BARU) Tombol kembali di Halaman Profil
-    profileBackBtn.addEventListener('click', () => navigateTo('Main'));
 
 
-    // --- Event Listener Lokasi & Perasaan (Tidak Berubah) ---
+    // --- Event Listener Lokasi ---
     document.getElementById('openLocationModalBtn').addEventListener('click', () => {
       renderLocationList(DUMMY_LOCATIONS);
       locationModal.style.display = 'flex';
     });
-    document.getElementById('locationModalBackBtn').addEventListener('click', () => locationModal.style.display = 'none');
+    document.getElementById('locationModalBackBtn').addEventListener('click', () => {
+      locationModal.style.display = 'none';
+    });
     document.getElementById('removeLocationBtn').addEventListener('click', () => {
       selectedLocation = null;
       renderLocationBar();
     });
     locationSearchInput.addEventListener('input', (e) => {
       const searchTerm = e.target.value.toLowerCase();
-      const filtered = DUMMY_LOCATIONS.filter(loc => loc.name.toLowerCase().includes(searchTerm));
+      const filtered = DUMMY_LOCATIONS.filter(loc => 
+        loc.name.toLowerCase().includes(searchTerm) || 
+        loc.detail.toLowerCase().includes(searchTerm)
+      );
       renderLocationList(filtered);
     });
+    
+    // --- Event Listener Perasaan ---
     document.getElementById('openFeelingModalBtn').addEventListener('click', () => {
       renderFeelingList(DUMMY_FEELINGS, 'feeling'); 
       feelingTabPerasaan.classList.add('active');
@@ -332,7 +303,9 @@
       feelingSearchInput.value = '';
       feelingModal.style.display = 'flex';
     });
-    document.getElementById('feelingModalBackBtn').addEventListener('click', () => feelingModal.style.display = 'none');
+    document.getElementById('feelingModalBackBtn').addEventListener('click', () => {
+      feelingModal.style.display = 'none';
+    });
     feelingTabPerasaan.addEventListener('click', () => {
         renderFeelingList(DUMMY_FEELINGS, 'feeling');
         feelingTabPerasaan.classList.add('active');
@@ -347,9 +320,14 @@
         const searchTerm = e.target.value.toLowerCase();
         const currentType = feelingTabPerasaan.classList.contains('active') ? 'feeling' : 'activity';
         const sourceData = currentType === 'feeling' ? DUMMY_FEELINGS : DUMMY_ACTIVITIES;
-        const filtered = sourceData.filter(item => item.text.toLowerCase().includes(searchTerm));
+        const filtered = sourceData.filter(item => 
+            item.text.toLowerCase().includes(searchTerm)
+        );
         renderFeelingList(filtered, currentType);
     });
+
+
+    // --- Fungsi Render dan Logika Lokasi ---
     function renderLocationBar() {
       if (selectedLocation) {
         locationBarText.textContent = selectedLocation.name;
@@ -360,11 +338,20 @@
     }
     function renderLocationList(locations) {
       locationList.innerHTML = '';
-      if (locations.length === 0) { /*...*/ return; }
+      if (locations.length === 0) {
+        locationList.innerHTML = `<p class="text-center text-gray-500 mt-4">Tidak ada lokasi ditemukan.</p>`;
+        return;
+      }
       locations.forEach(loc => {
         const item = document.createElement('div');
         item.className = 'flex items-center p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100';
-        item.innerHTML = `...`; // (Konten SVG disingkat)
+        item.innerHTML = `
+          <svg class="w-6 h-6 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          <div>
+            <p class="font-semibold text-gray-900">${escapeHtml(loc.name)}</p>
+            <p class="text-sm text-gray-500">${escapeHtml(loc.detail)}</p>
+          </div>
+        `;
         item.addEventListener('click', () => {
           selectedLocation = loc;
           locationModal.style.display = 'none';
@@ -373,6 +360,8 @@
         locationList.appendChild(item);
       });
     }
+
+    // --- Fungsi Render Perasaan ---
     function renderPostHeader() {
         const user = auth.currentUser;
         if (!user) return;
@@ -387,11 +376,19 @@
     }
     function renderFeelingList(items, type) {
         feelingList.innerHTML = '';
-        if (items.length === 0) { /*...*/ return; }
+        if (items.length === 0) {
+            feelingList.innerHTML = `<p class="text-center text-gray-500 mt-4">Tidak ada ${type} ditemukan.</p>`;
+            return;
+        }
         items.forEach(itemData => {
             const item = document.createElement('div');
             item.className = 'flex items-center p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100';
-            item.innerHTML = `...`; // (Konten emoji disingkat)
+            item.innerHTML = `
+                <span class="text-2xl mr-3">${itemData.emoji}</span>
+                <div>
+                    <p class="font-semibold text-gray-900">${escapeHtml(itemData.text)}</p>
+                </div>
+            `;
             item.addEventListener('click', () => {
                 selectedFeeling = { type: type, ...itemData };
                 feelingModal.style.display = 'none';
@@ -400,63 +397,6 @@
             feelingList.appendChild(item);
         });
     }
-
-    // --- (BARU) Fungsi Render Halaman Profil ---
-    async function renderProfileView(userId) {
-        const isOwnProfile = userId === auth.currentUser.uid;
-
-        // 1. Ambil data pengguna dari koleksi 'users'
-        let userName = "Pengguna";
-        const userDocRef = doc(db, "users", userId);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-            userName = userDocSnap.data().name;
-        }
-        // (Catatan: bio dan teman masih placeholder)
-        
-        // 2. Set Info Profil
-        profileViewName.textContent = `${userName} (Open)`;
-        profileViewFriendCount.textContent = "151 teman"; // Placeholder
-        profileViewBio.textContent = "Raised by havoc, crowned in fear\nthe name they whisper: sryn'x 2"; // Placeholder
-        
-        // 3. Set Tombol Dinamis
-        profileButtonContainer.innerHTML = '';
-        if (isOwnProfile) {
-            // Tampilan Profil Sendiri
-            profileButtonContainer.innerHTML = `
-                <button class="flex-1 bg-fb-blue text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
-                    Tambahkan ke cerita
-                </button>
-                <button class="flex-1 bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path></svg>
-                    Edit profil
-                </button>
-                <button class="bg-gray-200 text-gray-800 font-semibold py-2 px-3 rounded-lg">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"></path></svg>
-                </button>
-            `;
-        } else {
-            // Tampilan Profil Orang Lain
-            profileButtonContainer.innerHTML = `
-                <button class="flex-1 bg-fb-blue text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
-                    Tambahkan jadi teman
-                </button>
-                <button class="flex-1 bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clip-rule="evenodd"></path></svg>
-                    Kirim pesan
-                </button>
-                <button class="bg-gray-200 text-gray-800 font-semibold py-2 px-3 rounded-lg">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"></path></svg>
-                </button>
-            `;
-        }
-        
-        // 4. Muat Postingan Khusus Pengguna
-        listenProfilePosts(userId);
-    }
-
 
     // --- Bagian Auth, Profile ---
     
@@ -467,7 +407,10 @@
       try {
         await createUserWithEmailAndPassword(auth, email, pass);
         registerForm.reset();
-      } catch (err) { console.error("Gagal daftar:", err); showModalMessage("Gagal daftar", err.message); }
+      } catch (err) {
+        console.error("Gagal daftar:", err);
+        showModalMessage("Gagal daftar", err.message);
+      }
     });
 
     loginForm.addEventListener("submit", async (e) => {
@@ -477,19 +420,27 @@
       try {
         await signInWithEmailAndPassword(auth, email, pass);
         loginForm.reset();
-      } catch (err) { console.error("Gagal login:", err); showModalMessage("Gagal login", err.message); }
+      } catch (err) {
+        console.error("Gagal login:", err);
+        showModalMessage("Gagal masuk", err.message);
+      }
     });
 
-    // Fungsi update UI terpusat
+    // Memisahkan fungsi update UI profil
     function updateProfileUI(user) {
         if (!user) return;
         const displayName = user.displayName || user.email;
+        const avatarLetter = displayName[0] || '?';
+
         // 1. Main View (Header)
         userStatusDisplay.textContent = displayName; 
+        
         // 2. Post View
         renderPostHeader();
+        
         // 3. Menu View
         menuProfileName.textContent = displayName;
+        
         // 4. Settings View
         settingsProfileName.textContent = displayName;
         settingsNameInput.value = displayName;
@@ -500,15 +451,14 @@
       const user = auth.currentUser;
       if (!user) return;
       await updateProfile(user, { displayName: name });
-      // Simpan ke 'users' collection
       await setDoc(doc(db, "users", user.uid), {
         name,
         email: user.email,
         updatedAt: new Date()
-      }, { merge: true }); // Gunakan merge jika ada data lain
+      });
     }
 
-    // Form Pendaftaran Awal
+    // Form Pendaftaran Awal (Hanya untuk pengguna baru)
     profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = profileNameInput.value.trim();
@@ -516,34 +466,44 @@
       try {
         await saveProfileName(name);
         profileModal.style.display = "none";
-        updateProfileUI(auth.currentUser); 
+        updateProfileUI(auth.currentUser); // Update UI setelah simpan
         navigateTo('Main');
-      } catch (err) { console.error("Gagal simpan nama:", err); showModalMessage("Gagal simpan nama", err.message); }
+      } catch (err) {
+        console.error("Gagal simpan nama:", err);
+        showModalMessage("Gagal simpan nama", err.message);
+      }
     });
     
-    // Form Pengaturan (Ganti nama)
+    // Form Pengaturan (Untuk ganti nama)
     settingsForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const name = settingsNameInput.value.trim();
         if (!name) return showModalMessage("Perhatian", "Nama tidak boleh kosong");
+        
         try {
             await saveProfileName(name);
-            updateProfileUI(auth.currentUser); 
+            updateProfileUI(auth.currentUser); // Update UI setelah simpan
             showModalMessage("Sukses", "Nama berhasil diperbarui!");
-            navigateTo('Menu'); 
-        } catch (err) { console.error("Gagal simpan nama:", err); showModalMessage("Gagal simpan nama", err.message); }
+            navigateTo('Menu'); // Kembali ke Menu
+        } catch (err) {
+            console.error("Gagal simpan nama:", err);
+            showModalMessage("Gagal simpan nama", err.message);
+        }
     });
 
 
     let unsubscribeCurhatListener = null;
     let unsubscribeChatListener = null; 
-    let unsubscribeProfilePostsListener = null; // (BARU)
 
     onAuthStateChanged(auth, async (user) => {
-      // Hentikan semua listener saat auth berubah
-      if (unsubscribeCurhatListener) { unsubscribeCurhatListener(); unsubscribeCurhatListener = null; }
-      if (unsubscribeChatListener) { unsubscribeChatListener(); unsubscribeChatListener = null; }
-      if (unsubscribeProfilePostsListener) { unsubscribeProfilePostsListener(); unsubscribeProfilePostsListener = null; }
+      if (unsubscribeCurhatListener) {
+        unsubscribeCurhatListener();
+        unsubscribeCurhatListener = null;
+      }
+      if (unsubscribeChatListener) {
+        unsubscribeChatListener();
+        unsubscribeChatListener = null;
+      }
 
       if (user) {
         updateProfileUI(user); 
@@ -585,7 +545,10 @@
         selectedLocation = null; 
         selectedFeeling = null; 
         navigateTo('Main'); 
-      } catch (err) { console.error("Gagal posting:", err); showModalMessage("Gagal posting", err.message); }
+      } catch (err) {
+        console.error("Gagal posting:", err);
+        showModalMessage("Gagal posting", err.message);
+      }
     });
 
     // --- KIRIM PESAN CHAT GLOBAL (Firestore) ---
@@ -603,114 +566,11 @@
             await addDoc(collection(db, "globalChat"), messageData);
             chatForm.reset();
             chatMessageList.scrollTop = chatMessageList.scrollHeight;
-        } catch (err) { console.error("Gagal kirim pesan:", err); showModalMessage("Gagal kirim pesan", err.message); }
-    });
-
-    // --- (REFAKTOR) Fungsi Pembuat Elemen Postingan ---
-    function createPostElement(id, data) {
-        const displayName = data.userName || data.user || "Anon";
-        const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
-        const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
-        
-        const locationData = data.location;
-        const locationDisplay = locationData 
-            ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a>`
-            : '';
-            
-        const feelingData = data.feeling;
-        let feelingDisplay = '';
-        if (feelingData) {
-            const actionText = feelingData.type === 'feeling' ? 'merasa' : 'sedang';
-            feelingDisplay = ` ${escapeHtml(feelingData.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(feelingData.text)}.</span>`;
+        } catch (err) {
+            console.error("Gagal kirim pesan:", err);
+            showModalMessage("Gagal kirim pesan", err.message);
         }
-            
-        const mapPlaceholder = locationData ? `...` : ''; // (Konten map disingkat)
-          
-        const div = document.createElement("div");
-        div.className = "post-card mb-3 shadow-md"; 
-        div.innerHTML = `
-          <div class="p-4">
-              <div class="flex items-center mb-3">
-                  <button class="flex items-center flex-grow profile-click-trigger text-left">
-                      <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${displayName[0]}</div>
-                      <div class="flex-grow">
-                          <p class="font-semibold text-gray-900">${escapeHtml(displayName)} 
-                              ${feelingDisplay}
-                              ${locationDisplay}
-                          </p>
-                          <p class="text-xs text-gray-500">${time} · Publik</p>
-                      </div>
-                  </button>
-                  ${isOwnPost ? '<div class="text-xs text-fb-blue">Anda</div>' : ''}
-              </div>
-
-              <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
-              
-              ${mapPlaceholder}
-
-              <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
-                  <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path...></path></svg> Suka
-                  </button>
-                  <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path...></path></svg> Komentar (${(data.comments || []).length})
-                  </button>
-                  <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path...></path></svg> Bagikan
-                  </button>
-              </div>
-          </div>
-
-          <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
-              <div class="comments space-y-3 mb-4">
-                ${(data.comments || []).map(c => `...`).join("")} </div>
-              <form class="commentForm flex gap-2 items-center">
-                  <div class="w-8 h-8 rounded-full bg-fb-blue ...">
-                      ${auth.currentUser ? auth.currentUser.displayName[0] : 'A'}
-                  </div>
-                  <input type="text" placeholder="Tulis komentar..." required class="flex-grow ...">
-                  <button class="text-fb-blue ...">
-                      <svg class="w-5 h-5" ...><path...></path></svg>
-                  </button>
-              </form>
-          </div>
-        `;
-        
-        // (BARU) Event listener untuk klik profil
-        const profileTrigger = div.querySelector(".profile-click-trigger");
-        profileTrigger.addEventListener('click', (e) => {
-            e.preventDefault();
-            navigateTo('Profile', { userId: data.userId });
-        });
-        
-        // Event listener untuk Komentar
-        const commentToggleBtn = div.querySelector(".comment-toggle");
-        const commentsArea = div.querySelector(".comments-area");
-        commentToggleBtn.addEventListener('click', () => {
-          commentsArea.classList.toggle('hidden');
-        });
-
-        // Event listener Form Komentar
-        const form = div.querySelector(".commentForm");
-        form.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          // ... (Logika kirim komentar tidak berubah)
-          const commentInput = e.target.querySelector('input[type="text"]');
-          const commentText = commentInput.value.trim();
-          if (!commentText) return;
-          const user = auth.currentUser;
-          if (!user) return showModalMessage("Kesalahan", "Harus login dulu untuk berkomentar!");
-          const commenterName = user.displayName || user.email;
-          try {
-            await updateDoc(doc(db, "curhatan", id), {
-              comments: arrayUnion({ userId: user.uid, userName: commenterName, text: commentText })
-            });
-            e.target.reset();
-          } catch (err) { console.error("Gagal kirim komentar:", err); showModalMessage("Gagal kirim komentar", err.message); }
-        });
-        
-        return div; // Kembalikan elemen DOM
-    }
+    });
 
 
     // --- LISTEN REAL-TIME CURHATAN ---
@@ -729,57 +589,127 @@
         } else {
             curhatList.classList.remove('pb-10');
         }
-        
-        // (REFAKTOR) Menggunakan fungsi createPostElement
+
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           const id = docSnap.id;
-          const postElement = createPostElement(id, data);
-          curhatList.appendChild(postElement);
+          const displayName = data.userName || data.user || "Anon";
+          const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
+          const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
+          
+          const locationData = data.location;
+          const locationDisplay = locationData 
+              ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a>`
+              : '';
+              
+          const feelingData = data.feeling;
+          let feelingDisplay = '';
+          if (feelingData) {
+              const actionText = feelingData.type === 'feeling' ? 'merasa' : 'sedang';
+              feelingDisplay = ` ${escapeHtml(feelingData.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(feelingData.text)}.</span>`;
+          }
+              
+          const mapPlaceholder = locationData 
+              ? `
+                <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">
+                    <div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300">
+                        <div class="p-4">
+                            <svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+                            <p class="text-sm font-medium">${escapeHtml(locationData.name)}</p>
+                            <p class="text-xs">${escapeHtml(locationData.detail)}</p>
+                        </div>
+                    </div>
+                </div>
+            ` : '';
+            
+          const div = document.createElement("div");
+          div.className = "post-card mb-3 shadow-md"; 
+          div.innerHTML = `
+            <div class="p-4">
+                <div class="flex items-center mb-3">
+                    <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${displayName[0]}</div>
+                    <div class="flex-grow">
+                        <p class="font-semibold text-gray-900">${escapeHtml(displayName)} 
+                            ${feelingDisplay}
+                            ${locationDisplay}
+                        </p>
+                        <p class="text-xs text-gray-500">${time} · Publik</p>
+                    </div>
+                    ${isOwnPost ? '<div class="text-xs text-fb-blue">Anda</div>' : ''}
+                </div>
+                <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
+                ${mapPlaceholder}
+                <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
+                        Suka
+                    </button>
+                    <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        Komentar (${(data.comments || []).length})
+                    </button>
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
+                        Bagikan
+                    </button>
+                </div>
+            </div>
+            <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
+                <div class="comments space-y-3 mb-4">
+                  ${(data.comments || []).map(c => `
+                    <div class="flex items-start">
+                        <div class="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold mr-2">${c.userName ? c.userName[0] : 'A'}</div>
+                        <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
+                            <p class="font-semibold text-sm text-gray-800">${escapeHtml(c.userName || c.user)}</p>
+                            <p class="text-sm text-gray-700 break-words">${escapeHtml(c.text)}</p>
+                        </div>
+                    </div>
+                  `).join("")}
+                </div>
+                <form class="commentForm flex gap-2 items-center">
+                    <div class="w-8 h-8 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-sm">
+                        ${auth.currentUser ? auth.currentUser.displayName[0] : 'A'}
+                    </div>
+                    <input type="text" placeholder="Tulis komentar..." required
+                        class="flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
+                    >
+                    <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m8 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                </form>
+            </div>
+          `;
+          const commentToggleBtn = div.querySelector(".comment-toggle");
+          const commentsArea = div.querySelector(".comments-area");
+          commentToggleBtn.addEventListener('click', () => {
+            commentsArea.classList.toggle('hidden');
+          });
+          const form = div.querySelector(".commentForm");
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const commentInput = e.target.querySelector('input[type="text"]');
+            const commentText = commentInput.value.trim();
+            if (!commentText) return;
+            const user = auth.currentUser;
+            if (!user) return showModalMessage("Kesalahan", "Harus login dulu untuk berkomentar!");
+            const commenterName = user.displayName || user.email;
+            try {
+              await updateDoc(doc(db, "curhatan", id), {
+                comments: arrayUnion({ userId: user.uid, userName: commenterName, text: commentText })
+              });
+              e.target.reset();
+            } catch (err) {
+              console.error("Gagal kirim komentar:", err);
+              showModalMessage("Gagal kirim komentar", err.message);
+            }
+          });
+          curhatList.appendChild(div);
         });
       }, (err) => {
         console.error("Listen curhatan error:", err);
       });
       return unsub;
     }
-    
-    // --- (BARU) LISTEN REAL-TIME POSTINGAN PROFIL ---
-    function listenProfilePosts(userId) {
-        // Hentikan listener lama jika ada
-        if (unsubscribeProfilePostsListener) {
-            unsubscribeProfilePostsListener();
-        }
-
-        profilePostList.innerHTML = "<p class='text-center p-4'>Memuat postingan...</p>";
-        
-        // Buat query baru dengan filter 'where'
-        const q = query(
-            collection(db, "curhatan"),
-            where("userId", "==", userId), // <-- KUNCI FILTER
-            orderBy("createdAt", "desc")
-        );
-        
-        unsubscribeProfilePostsListener = onSnapshot(q, (snapshot) => {
-            if (snapshot.empty) {
-                profilePostList.innerHTML = "<p class='text-center p-4'>Pengguna ini belum memiliki postingan.</p>";
-                return;
-            }
-            
-            profilePostList.innerHTML = ""; // Bersihkan
-            
-            // (REFAKTOR) Menggunakan fungsi createPostElement
-            snapshot.forEach((docSnap) => {
-                const data = docSnap.data();
-                const id = docSnap.id;
-                const postElement = createPostElement(id, data);
-                profilePostList.appendChild(postElement);
-            });
-        }, (err) => {
-            console.error("Listen profile posts error:", err);
-            profilePostList.innerHTML = "<p class='text-center p-4 text-red-500'>Gagal memuat postingan.</p>";
-        });
-    }
-
 
     // --- LISTEN REAL-TIME CHAT GLOBAL ---
     function listenGlobalChat() {
@@ -797,39 +727,84 @@
                 container.className = 'chat-message-container';
                 if (isOwnMessage) {
                     container.classList.add('sent');
-                    container.innerHTML = `<div class="chat-bubble sent">${escapeHtml(data.text)}</div>`;
+                    container.innerHTML = `
+                        <div class="chat-bubble sent">
+                            ${escapeHtml(data.text)}
+                        </div>
+                    `;
                 } else {
                     container.classList.add('received');
                     container.innerHTML = `
                         <p class="chat-sender-name">${escapeHtml(data.userName)}</p>
-                        <div class="chat-bubble received">${escapeHtml(data.text)}</div>
+                        <div class="chat-bubble received">
+                            ${escapeHtml(data.text)}
+                        </div>
                     `;
                 }
                 chatMessageList.appendChild(container);
             });
             chatMessageList.scrollTop = chatMessageList.scrollHeight;
-        }, (err) => { console.error("Listen chat error:", err); });
+        }, (err) => {
+            console.error("Listen chat error:", err);
+        });
         return unsub;
     }
 
 
     // --- Helper: Generate Dummy Posts ---
     function generateDummyPosts() {
-        // ... (Fungsi ini tidak berubah)
-        return `...`;
+        const dummyData = [
+            { name: "Sistem", text: "Curhatanmu akan muncul di sini. Coba buat postingan pertamamu!", time: "Sekarang", location: { name: "Jeneponto", detail: "Sulawesi Selatan" } },
+            { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh dan fungsi scroll berjalan lancar.", time: "2 hari lalu", feeling: { emoji: '😊', text: 'senang', type: 'feeling'} },
+        ];
+        return dummyData.map(data => {
+            const locationDisplay = data.location 
+              ? ` di <a href="#" class="font-bold text-fb-blue hover:underline">${data.location.name}</a>` : '';
+            let feelingDisplay = '';
+            if (data.feeling) {
+                const actionText = data.feeling.type === 'feeling' ? 'merasa' : 'sedang';
+                feelingDisplay = ` ${escapeHtml(data.feeling.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(data.feeling.text)}.</span>`;
+            }
+            const mapPlaceholder = data.location 
+              ? `<div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative opacity-50"><div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300"><div class="p-4"><svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg></div></div></div>` : '';
+            return `
+                <div class="post-card mb-3 shadow-md opacity-80">
+                    <div class="p-4">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-lg mr-2">${data.name[0]}</div>
+                            <div class="flex-grow">
+                                <p class="font-semibold text-gray-900">${data.name} ${feelingDisplay} ${locationDisplay}</p>
+                                <p class="text-xs text-gray-500">${data.time} · Dummy</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${data.text}</p>
+                        ${mapPlaceholder}
+                        <div class="flex justify-around border-t border-gray-200 mt-4 pt-2 text-gray-400">
+                            <button class="p-2">Suka</button> <button class="p-2">Komentar</button> <button class="p-2">Bagikan</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
     }
 
-    // --- Helper: escape ---
+    // --- Helper: escape untuk mencegah XSS sederhana ---
     function escapeHtml(str) {
       if (!str && str !== 0) return "";
-      return String(str).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
-    // --- Helper: Modal Pesan ---
+    // --- Helper: Modal Pesan (Mengganti alert()) ---
     const msgModal = document.getElementById('messageModal');
     const msgTitle = document.getElementById('messageTitle');
     const msgContent = document.getElementById('messageContent');
     document.getElementById('messageCloseBtn').addEventListener('click', () => msgModal.style.display = 'none');
+    
     function showModalMessage(title, content) {
         msgTitle.textContent = title;
         msgContent.textContent = content;
@@ -872,8 +847,41 @@
   
 
 <div id="authView" class="hidden min-h-screen flex items-center justify-center bg-white p-4">
-    <div class="w-full max-w-md">...</div>
-</div>
+    <div class="w-full max-w-md">
+      <div class="text-center mb-10">
+        <svg class="mx-auto" fill="#1877F2" viewBox="0 0 24 24" width="48px" height="48px"><path d="M12 2C6.477 2 2 6.477 2 12c0 5.016 3.655 9.182 8.437 9.879V14.92h-2.92v-2.92h2.92V9.69c0-2.887 1.761-4.47 4.33-4.47.828 0 1.54.062 1.748.09V7.89h-1.571c-1.39 0-1.66.66-1.66 1.63V11.8h3.284l-.527 2.92h-2.757v6.959C18.345 21.182 22 17.016 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      </div>
+
+<div id="loginCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+        <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Masuk ke Tempat Curhat</h3>
+        <form id="loginForm" class="space-y-4">
+          <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
+          <input type="password" name="password" placeholder="Kata Sandi" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
+          <button class="w-full bg-fb-blue hover:bg-opacity-90 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+            Login
+          </button>
+        </form>
+        <p class="text-center mt-4 text-sm"><a href="#" class="text-fb-blue hover:underline">Lupa kata sandi?</a></p>
+        <div class="border-t border-gray-200 my-6"></div>
+        <button id="authSwitchToRegister" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-150">
+          Buat Akun Baru
+        </button>
+      </div>
+<div id="registerCard" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hidden">
+        <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Daftar Akun Baru</h3>
+        <form id="registerForm" class="space-y-4">
+          <input type="email" name="email" placeholder="Email baru" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
+          <input type="password" name="password" placeholder="Password baru" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
+          <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+            Daftar
+          </button>
+        </form>
+        <p class="text-center mt-4 text-sm">
+            Sudah punya akun? <a href="#" id="authSwitchToLogin" class="text-fb-blue hover:underline">Login di sini</a>
+        </p>
+      </div>
+    </div>
+  </div>
 
 
   
@@ -889,6 +897,7 @@
             </button>
         </div>
       </div>
+      
       <div class="flex justify-around border-t border-gray-200 text-gray-500">
         <div class="p-3 text-fb-blue border-b-2 border-fb-blue font-semibold w-full text-center">Feed Curhat</div>
         <button id="goToChatBtn" class="p-3 hover:bg-gray-100 transition duration-150 w-full text-center">Pesan Global</button>
@@ -896,8 +905,27 @@
     </nav>
 
 <div class="max-w-xl mx-auto px-3 pt-3 pb-10"> 
+        
 <div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
+                    <span id="userStatusDisplay" class="font-semibold text-white">?</span>
+                </div>
+                <button id="goToPostBtn" class="flex-grow text-left bg-fb-gray p-2.5 rounded-full text-gray-600 hover:bg-gray-200 transition duration-150">
+                    Apa yang Anda pikirkan?
+                </button>
             </div>
+            <div class="border-t border-gray-200 mt-3 pt-3 flex justify-around">
+                <div class="flex items-center text-red-500 font-medium">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Foto/Video
+                </div>
+                <div class="flex items-center text-green-500 font-medium">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Perasaan
+                </div>
+            </div>
+        </div>
 <div id="curhatList">
           <p class="text-center text-gray-500 mt-10">Memuat curhatan...</p>
         </div>
@@ -908,64 +936,176 @@
   
 
 <div id="postView" class="hidden fixed inset-0 flex flex-col bg-white z-20">
-    <header class="modal-header ...">...</header>
-    <div class="flex-grow p-4 overflow-y-auto bg-white">...</div>
-    <div id="locationSelectionBar" class="hidden ...">...</div>
-    <div class="border-t border-gray-200 p-4 bg-white">...</div>
-</div>
+    
+<header class="modal-header flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
+        <button id="postFormBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </button>
+        <h2 class="text-xl font-bold text-gray-900">Buat Curhatan</h2>
+        <button id="submitPostBtn" form="curhatForm" class="bg-fb-blue hover:bg-opacity-80 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 disabled:bg-gray-400">
+            POSTING
+        </button>
+    </header>
+<div class="flex-grow p-4 overflow-y-auto bg-white"> <div class="flex items-center mb-6">
+            <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
+                <span id="postAvatarLetter" class="font-semibold text-white">?</span>
+            </div>
+            <div>
+                <p class="font-semibold text-gray-900 text-lg">
+                    <span id="postUsernameText">Pengguna</span>
+                </p>
+                <div class="flex items-center text-sm text-gray-600 bg-gray-200 rounded-full px-3 py-1 mt-1">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0v4m-6 4h2m-2 4h2m6-4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-4a3 3 0 013-3h2.586a1 1 0 01.707.293l1.414 1.414A1 1 0 0012.414 14H18a2 2 0 002-2v-4a2 2 0 00-2-2h-3.586a1 1 0 01-.707-.293l-1.414-1.414A1 1 0 009.586 6H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2v-1"></path></svg>
+                    Publik
+                </div>
+            </div>
+        </div>
+        <form id="curhatForm" class="flex-grow flex flex-col">
+            <textarea name="text" rows="10" placeholder="Apa yang Anda pikirkan?" required
+              class="flex-grow text-xl p-0 border-none resize-none focus:ring-0 focus:border-transparent"
+            ></textarea>
+        </form>
+    </div>
+<div id="locationSelectionBar" class="hidden absolute bottom-20 left-4 right-4 bg-white p-3 rounded-xl shadow-lg border border-gray-200 flex items-center justify-between">
+        <div class="flex items-center">
+            <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span id="locationBarText" class="font-semibold text-gray-800">Nama Lokasi</span>
+        </div>
+        <button id="removeLocationBtn" class="text-gray-500 hover:text-gray-700 p-1 rounded-full">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+    </div>
+<div class="border-t border-gray-200 p-4 bg-white">
+        <div class="space-y-4">
+            <div class="flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150">
+                <svg class="w-6 h-6 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                Foto/Video
+            </div>
+            <button id="openLocationModalBtn" class="w-full flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150 text-left">
+                <svg class="w-6 h-6 mr-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Tambahkan lokasi
+            </button>
+            <button id="openFeelingModalBtn" class="w-full flex items-center text-gray-700 font-medium p-2 hover:bg-gray-100 rounded-lg transition duration-150 text-left">
+                <svg class="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Perasaan/aktivitas
+            </button>
+        </div>
+    </div>
+  </div>
 
 
   
 
 <div id="locationModal" class="flex-col">
-    </div>
+      <header class="modal-header flex items-center justify-between p-4 border-b border-gray-200">
+          <button id="locationModalBackBtn" class="text-gray-700 hover:text-gray-900 p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900">Tambahkan Lokasi Anda</h2>
+          <div class="w-6"></div>
+      </header>
+<div class="p-4 border-b border-gray-200 bg-white">
+          <div class="flex items-center bg-gray-100 rounded-full p-2">
+              <input id="locationSearchInput" type="text" placeholder="Cari"
+                  class="flex-grow bg-transparent border-none focus:ring-0 focus:border-transparent p-0 text-lg"
+              />
+              <svg class="w-6 h-6 text-gray-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+      </div>
+<div class="flex-grow overflow-y-auto bg-white">
+          <h3 class="text-lg font-semibold text-gray-700 p-4 border-b border-gray-200">Saran</h3>
+          <div id="locationList"></div>
+      </div>
+  </div>
 
   
 
 <div id="feelingModal" class="flex-col">
-    </div>
+      <header class="modal-header flex items-center justify-between p-4 border-b border-gray-200">
+          <button id="feelingModalBackBtn" class="text-gray-700 hover:text-gray-900 p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900">Apa yang Anda rasakan?</h2>
+          <div class="w-6"></div>
+      </header>
+<div class="flex border-b border-gray-200 bg-white">
+          <button id="feelingTabPerasaan" class="feeling-tab flex-1 p-4 font-semibold text-gray-600 border-b-2 border-transparent hover:bg-gray-50 active">
+              Perasaan
+          </button>
+          <button id="feelingTabAktivitas" class="feeling-tab flex-1 p-4 font-semibold text-gray-600 border-b-2 border-transparent hover:bg-gray-50">
+              Aktivitas
+          </button>
+      </div>
+<div class="p-4 border-b border-gray-200 bg-white">
+          <div class="flex items-center bg-gray-100 rounded-full p-2">
+              <input id="feelingSearchInput" type="text" placeholder="Cari..."
+                  class="flex-grow bg-transparent border-none focus:ring-0 focus:border-transparent p-0 text-lg"
+              />
+              <svg class="w-6 h-6 text-gray-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+      </div>
+<div class="flex-grow overflow-y-auto bg-white">
+          <div id="feelingList"></div>
+      </div>
+  </div>
 
 
   
 
 <div id="chatView" class="hidden"> 
-    <header class="modal-header ...">...</header>
-    <div id="chatMessageList" class="flex-grow overflow-y-auto"></div>
-    <footer class="p-3 border-t border-gray-200 bg-white">...</footer>
-</div>
+      <header class="modal-header flex items-center justify-between p-4 border-b border-gray-200 shadow-sm">
+          <button id="chatBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900">Chat Global (GC)</h2>
+          <button class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </button>
+      </header>
+
+      <div id="chatMessageList" class="flex-grow overflow-y-auto"></div>
+
+      <footer class="p-3 border-t border-gray-200 bg-white">
+          <form id="chatForm" class="flex items-center gap-2">
+              <input id="chatTextInput" type="text" placeholder="Tulis pesan..." required
+                  class="flex-grow px-4 py-2 text-sm border-gray-300 bg-fb-gray rounded-full focus:ring-0 focus:border-fb-blue"
+              />
+              <button type="submit" class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
+                  <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+              </button>
+          </form>
+      </footer>
+  </div>
 
 
-  
-
-<div id="menuView" class="hidden"> 
+  <div id="menuView" class="hidden"> 
       <header class="modal-header flex items-center p-4 border-b border-gray-200 shadow-sm">
           <button id="menuBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           </button>
           <h2 class="text-xl font-bold text-gray-900 mx-auto">Menu</h2>
-          <div class="w-6"></div>
-      </header>
+          <div class="w-6"></div></header>
 
       <div class="flex-grow overflow-y-auto p-4">
-          <button id="menuProfileBtn" class="w-full bg-white p-4 rounded-lg shadow-md mb-4 flex items-center text-left hover:bg-gray-50 transition duration-150">
+          <div classa="bg-white p-4 rounded-lg shadow-md mb-4 flex items-center">
               <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-700 mr-4">
                   </div>
               <div>
                   <h3 id="menuProfileName" class="text-xl font-bold text-gray-900">Nama Pengguna</h3>
                   <p class="text-sm text-gray-600">Lihat profil Anda</p>
               </div>
-          </button>
+          </div>
           
           <button id="menuSettingsBtn" class="w-full flex items-center bg-white p-4 rounded-lg shadow-md mb-4 text-left hover:bg-gray-50 transition duration-150">
               <div class="p-2 bg-gray-200 rounded-full mr-4">
-                  <svg class="w-6 h-6 text-gray-700" ...><path...></path></svg>
+                  <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
               </div>
               <p class="text-lg font-semibold text-gray-800">Pengaturan</an>
           </button>
           
           <button id="menuLogoutBtn" class="w-full flex items-center bg-white p-4 rounded-lg shadow-md text-left hover:bg-gray-50 transition duration-150">
               <div class="p-2 bg-gray-200 rounded-full mr-4">
-                  <svg class="w-6 h-6 text-gray-700" ...><path...></path></svg>
+                  <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
               </div>
               <p class="text-lg font-semibold text-gray-800">Keluar</p>
           </button>
@@ -973,59 +1113,33 @@
   </div>
 
 
-  
-
-<div id="settingsView" class="hidden"> 
-    <header class="modal-header ...">...</header>
-    <div class="flex-grow overflow-y-auto p-4">...</div>
-</div>
-
-
-  <div id="profileView" class="hidden"> 
+  <div id="settingsView" class="hidden"> 
       <header class="modal-header flex items-center p-4 border-b border-gray-200 shadow-sm">
-          <button id="profileBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+          <button id="settingsBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           </button>
-          <h2 class="text-xl font-bold text-gray-900 mx-auto">Profil</h2>
-          <button class="text-gray-700 hover:text-fb-blue p-1">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          </button>
-      </header>
+          <h2 class="text-xl font-bold text-gray-900 mx-auto">Pengaturan Akun</h2>
+          <div class="w-6"></div></header>
 
-      <div class="flex-grow overflow-y-auto">
-          <div class="relative bg-gray-700 h-40">
-              <div class="absolute -bottom-12 left-4 w-24 h-24 rounded-full bg-gray-300 border-4 border-white">
+      <div class="flex-grow overflow-y-auto p-4">
+          <div class="flex flex-col items-center bg-white p-6 rounded-lg shadow-md mb-4">
+              <div class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-4xl font-bold text-gray-700 mb-4">
                   </div>
+              <h3 id="settingsProfileName" class="text-2xl font-bold text-gray-900">Nama Pengguna</h3>
+              <p class="text-sm text-gray-600">CurhatApp</p>
           </div>
           
-          <div class="p-4 mt-12 bg-white border-b border-gray-200">
-              <h3 id="profileViewName" class="text-2xl font-bold text-gray-900">Nama Pengguna (Open)</h3>
-              <p id="profileViewFriendCount" class="text-gray-600 font-semibold">151 teman</p>
-              <p id="profileViewBio" class="text-gray-800 my-2 whitespace-pre-wrap">Bio pengguna...</p>
-              
-              <div id="profileButtonContainer" class="flex items-center gap-2 mt-4">
-                  </div>
-          </div>
-
-          <div class="flex justify-around bg-white border-b border-gray-200 text-gray-600 font-semibold">
-              <div class="p-4 text-fb-blue border-b-2 border-fb-blue">Postingan</div>
-              <div class="p-4">Foto</div>
-              <div class="p-4">Reels</div>
-          </div>
-          
-          <div class="p-4 bg-white mt-3">
-              <h4 class="text-xl font-bold mb-2">Intro</h4>
-              <div class="space-y-3 text-gray-700">
-                  <p>🏙️ Tinggal di Kota Saat Ini</p>
-                  <p>💼 Bekerja di Kantor</p>
-                  <p>🎓 Belajar di Sekolah</p>
-                  <p>🏠 Dari Kota Asal</p>
+          <form id="settingsForm" class="bg-white p-4 rounded-lg shadow-md">
+              <div class="mb-4">
+                  <label for="settingsNameInput" class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
+                  <input id="settingsNameInput" type="text" required 
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fb-blue focus:border-fb-blue"
+                  />
               </div>
-          </div>
-
-          <div id="profilePostList" class="mt-3">
-              <p class="text-center p-4">Memuat postingan...</p>
-          </div>
+              <button type="submit" class="w-full bg-fb-blue hover:bg-opacity-80 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+                  Simpan Perubahan
+              </button>
+          </form>
       </div>
   </div>
 
