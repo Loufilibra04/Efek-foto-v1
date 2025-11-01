@@ -79,7 +79,7 @@
     }
     
     /* Modal fullscreen */
-    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal {
+    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView {
         background: #fff;
         display: none; 
         position: fixed;
@@ -90,7 +90,7 @@
         z-index: 1000; 
     }
     
-    #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal {
+    #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView {
         z-index: 3000; 
         background-color: #F0F2F5; /* Latar belakang abu-abu */
     }
@@ -193,7 +193,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove, deleteDoc } 
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove, deleteDoc, where } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
@@ -209,6 +209,7 @@
     let isCurrentUserVerified = false; 
     let userDocUnsubscribe = null; 
     let selectedChatThemeId = 'default'; 
+    let unsubscribeProfilePosts = null; // Listener untuk postingan profil
 
     // --- SVG Verifikasi ---
     const VERIFIED_BADGE_SVG = `
@@ -266,7 +267,6 @@
     const registerForm = document.getElementById("registerForm");
     const curhatForm = document.getElementById("curhatForm");
     const curhatList = document.getElementById("curhatList");
-    // const userStatusDisplay = document.getElementById("userStatusDisplay"); // <-- Dihapus dari global
     const profileModal = document.getElementById("profileModal");
     const profileForm = document.getElementById("profileForm");
     const profileNameInput = document.getElementById("profileName");
@@ -331,6 +331,15 @@
     const menuAvatarDisplay = document.getElementById('menuAvatarDisplay');
     const settingsAvatarDisplay = document.getElementById('settingsAvatarDisplay');
     
+    // PERUBAHAN: Elemen Halaman Profil
+    const profileView = document.getElementById('profileView');
+    const profileBackBtn = document.getElementById('profileBackBtn');
+    const profileHeaderName = document.getElementById('profileHeaderName');
+    const profileViewAvatar = document.getElementById('profileViewAvatar');
+    const profileViewName = document.getElementById('profileViewName');
+    const profileViewEmail = document.getElementById('profileViewEmail');
+    const profilePostList = document.getElementById('profilePostList');
+    
     
     // --- Inisialisasi Awal ---
     const savedTheme = localStorage.getItem('chatTheme');
@@ -352,6 +361,7 @@
       settingsView.style.display = 'none'; 
       avatarModal.style.display = 'none'; 
       chatSettingsModal.style.display = 'none'; 
+      profileView.style.display = 'none'; // <-- Tambah
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -373,6 +383,9 @@
         avatarModal.style.display = 'flex';
       } else if (page === 'ChatSettings') { 
         chatSettingsModal.style.display = 'flex';
+      } else if (page === 'Profile') { // <-- Tambah
+        profileView.style.display = 'flex';
+        profileView.classList.add('flex-col');
       }
     }
     
@@ -422,6 +435,12 @@
     // Navigasi Avatar
     openAvatarModalBtn.addEventListener('click', () => navigateTo('Avatar'));
     avatarModalBackBtn.addEventListener('click', () => navigateTo('Settings'));
+    
+    // PERUBAHAN: Navigasi Halaman Profil
+    profileBackBtn.addEventListener('click', () => {
+        if (unsubscribeProfilePosts) unsubscribeProfilePosts(); // Hentikan listener
+        navigateTo('Main');
+    });
 
 
     // --- Event Listener Lokasi ---
@@ -719,7 +738,7 @@
         const checkmarkHtml = isVerified ? VERIFIED_BADGE_SVG : ''; 
 
         // 1. Main View (Header)
-        // PERUBAHAN: Baris userStatusDisplay.innerHTML dihapus dari sini
+        // userStatusDisplay.innerHTML = `${escapeHtml(displayName)}${checkmarkHtml}`; // <-- Dihapus
         mainAvatarDisplay.innerHTML = innerHtml;
         mainAvatarDisplay.className = `w-10 h-10 ${baseClasses} ${colorClasses} text-lg`;
         
@@ -732,12 +751,17 @@
         menuProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; 
         menuAvatarDisplay.innerHTML = innerHtml;
         menuAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} text-xl mr-4`;
+        // PERUBAHAN: Tambah listener ke avatar dan nama di menu
+        menuAvatarDisplay.parentElement.onclick = () => openProfilePage(user.uid);
         
         // 4. Settings View
         settingsProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; 
         settingsAvatarDisplay.innerHTML = innerHtml;
         settingsAvatarDisplay.className = `w-24 h-24 ${baseClasses} ${colorClasses} text-4xl mb-4`;
         settingsNameInput.value = displayName;
+        // PERUBAHAN: Tambah listener ke avatar dan nama di settings
+        settingsAvatarDisplay.onclick = () => openProfilePage(user.uid);
+        settingsProfileName.onclick = () => openProfilePage(user.uid);
         
         // 5. Update semua avatar di kolom komentar
         const commentAvatars = document.querySelectorAll('.currentUserCommentAvatar');
@@ -827,6 +851,7 @@
       if (unsubscribeCurhatListener) unsubscribeCurhatListener();
       if (unsubscribeChatListener) unsubscribeChatListener();
       if (userDocUnsubscribe) userDocUnsubscribe(); 
+      if (unsubscribeProfilePosts) unsubscribeProfilePosts(); // <-- Tambah
 
       if (user) {
         if (!user.displayName) {
@@ -847,7 +872,6 @@
         renderAvatarList(); 
         renderChatThemeSelector(); 
       } else {
-        // userStatusDisplay.textContent = "Guest"; <-- Dihapus
         navigateTo('Auth');
       }
     });
@@ -929,300 +953,317 @@
         }
 
         snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          const id = docSnap.id;
-          const displayName = data.userName || data.user || "Anon";
-          const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
-          const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
-          
-          const backgroundData = data.background;
-          const locationData = data.location;
-          const feelingData = data.feeling;
-          const postAvatarId = data.userAvatarId; 
-          const postIsVerified = data.isVerified || false; 
-          
-          let feelingDisplay = '';
-          if (feelingData) {
-              const actionText = feelingData.type === 'feeling' ? 'merasa' : 'sedang';
-              feelingDisplay = ` ${escapeHtml(feelingData.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(feelingData.text)}.</span>`;
-          }
-          
-          const mapPlaceholder = (!backgroundData && locationData) 
-              ? `<div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">...</div>` : '';
-            
-          const div = document.createElement("div");
-          div.className = `post-card mb-3 shadow-md`; 
-          
-          const avatarData = DUMMY_AVATARS.find(a => a.id === postAvatarId);
-          const avatarInnerHtml = avatarData ? avatarData.svg : displayName[0].toUpperCase();
-          const avatarClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
-          
-          const postCheckmarkHtml = postIsVerified ? VERIFIED_BADGE_SVG : ''; 
-          
-          const userInfoHtml = `
-            <div class="p-4">
-                <div class="flex items-center mb-3 relative">
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-2 ${avatarClasses}">
-                        ${avatarInnerHtml}
-                    </div>
-                    <div class="flex-grow">
-                        <p class="font-semibold text-gray-900 flex items-center">
-                            <span>${escapeHtml(displayName)}</span>
-                            ${postCheckmarkHtml}
-                            ${feelingDisplay}
-                            ${!backgroundData && locationData ? `<span class="font-normal ml-1"> di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a></span>` : ''}
-                        </p>
-                        <p class="text-xs text-gray-500">${time} · Publik</p>
-                    </div>
-                    ${isOwnPost ? `
-                    <div class="ml-auto">
-                        <button type="button" class="delete-menu-btn text-gray-500 hover:text-gray-800 p-1 rounded-full">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
-                        </button>
-                        <div class="delete-dropdown w-40">
-                            <button type="button" class="delete-post-btn w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                                Hapus Postingan
-                            </button>
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-            </div>
-          `;
-          
-          const postContentHtml = backgroundData ?
-            `<div class="${backgroundData.css} ${backgroundData.textStyle} aspect-video flex items-center justify-center p-6 text-center whitespace-pre-wrap mx-4 rounded-lg">
-                ${escapeHtml(data.text)}
-            </div>`
-            :
-            `<div class="px-4">
-                <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
-                ${mapPlaceholder}
-            </div>`;
-          
-          const likes = data.likes || [];
-          const isLiked = auth.currentUser ? likes.includes(auth.currentUser.uid) : false;
-          
-          const buttonsHtml = `
-            <div class="p-4 pt-0">
-                <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
-                    <button class="like-btn flex items-center ${isLiked ? 'text-fb-blue' : 'text-gray-600'} hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
-                        <span class="like-text">${isLiked ? 'Disukai' : 'Suka'}</span>
-                        <span class="like-count ml-1">(${likes.length})</span>
-                    </button>
-                    <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                        Komentar (${(data.comments || []).length})
-                    </button>
-                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
-                        Bagikan
-                    </button>
-                </div>
-            </div>
-          `;
-          
-          const user = auth.currentUser;
-          const userAvatarData = DUMMY_AVATARS.find(a => a.id === currentUserAvatarId);
-          const userAvatarInnerHtml = userAvatarData ? userAvatarData.svg : (user ? (user.displayName[0] ? user.displayName[0].toUpperCase() : '?') : 'A');
-          const userAvatarClasses = userAvatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
-
-          const commentsHtml = `
-            <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
-                <div class="comments space-y-3 mb-4">
-                  </div>
-                
-                <div class="reply-status-container text-sm text-gray-500 mb-2 hidden"></div>
-                
-                <form class="commentForm flex gap-2 items-center">
-                    <div class="currentUserCommentAvatar w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${userAvatarClasses}">
-                        ${userAvatarInnerHtml}
-                    </div>
-                    <input type="text" placeholder="Tulis komentar..." required
-                        class="comment-input flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
-                    >
-                    <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m8 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </button>
-                </form>
-            </div>
-          `;
-          
-          div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
-          
-          // --- Listener Tombol Suka ---
-          const likeBtn = div.querySelector(".like-btn");
-          likeBtn.addEventListener('click', async () => {
-              const user = auth.currentUser;
-              if (!user) {
-                  showModalMessage("Kesalahan", "Anda harus login untuk menyukai postingan.");
-                  return;
-              }
-              
-              const postRef = doc(db, "curhatan", id);
-              const currentLikes = (docSnap.data().likes || []);
-              const isCurrentlyLiked = currentLikes.includes(user.uid);
-
-              try {
-                  if (isCurrentlyLiked) {
-                      await updateDoc(postRef, { likes: arrayRemove(user.uid) });
-                  } else {
-                      await updateDoc(postRef, { likes: arrayUnion(user.uid) });
-                  }
-              } catch (err) {
-                  console.error("Gagal update like:", err);
-                  showModalMessage("Gagal", "Gagal memperbarui suka.");
-              }
-          });
-          
-          // --- Listener Tombol Hapus ---
-          const deleteMenuBtn = div.querySelector(".delete-menu-btn");
-          const deleteDropdown = div.querySelector(".delete-dropdown");
-          const deletePostBtn = div.querySelector(".delete-post-btn");
-
-          if (isOwnPost && deleteMenuBtn) {
-              deleteMenuBtn.addEventListener('click', (e) => {
-                  e.stopPropagation(); 
-                  document.querySelectorAll('.delete-dropdown.show').forEach(el => {
-                      if(el !== deleteDropdown) el.classList.remove('show');
-                  });
-                  deleteDropdown.classList.toggle('show');
-              });
-
-              deletePostBtn.addEventListener('click', async () => {
-                  if (confirm("Anda yakin ingin menghapus postingan ini? Tindakan ini tidak bisa dibatalkan.")) {
-                      try {
-                          await deleteDoc(doc(db, "curhatan", id));
-                      } catch (err) {
-                          console.error("Gagal hapus postingan:", err);
-                          showModalMessage("Gagal", "Tidak dapat menghapus postingan.");
-                      }
-                  }
-                  deleteDropdown.classList.remove('show');
-              });
-          }
-          
-          // --- Logika untuk Render & Balas Komentar ---
-          
-          const commentsArea = div.querySelector(".comments-area");
-          const commentsContainer = commentsArea.querySelector(".comments");
-          const form = commentsArea.querySelector(".commentForm");
-          const commentInput = form.querySelector(".comment-input");
-          const replyStatusEl = commentsArea.querySelector(".reply-status-container");
-
-          function resetReplyState() {
-              form.dataset.replyToId = '';
-              form.dataset.replyToName = '';
-              replyStatusEl.classList.add('hidden');
-              replyStatusEl.innerHTML = '';
-          }
-          
-          const allComments = (data.comments || []).map((c, i) => {
-              if (!c.commentId) {
-                  c.commentId = `c_${c.createdAt?.seconds || i}_${c.userId}`;
-              }
-              return c;
-          });
-          
-          const repliesMap = new Map();
-          const mainComments = [];
-          
-          allComments.forEach(c => {
-              if (c.replyTo) {
-                  if (!repliesMap.has(c.replyTo)) {
-                      repliesMap.set(c.replyTo, []);
-                  }
-                  repliesMap.get(c.replyTo).push(c);
-              } else {
-                  mainComments.push(c);
-              }
-          });
-
-          mainComments.forEach(c => {
-              const commentEl = createCommentElement(c);
-              commentsContainer.appendChild(commentEl);
-              
-              commentEl.querySelector('.reply-btn').addEventListener('click', () => {
-                  form.dataset.replyToId = c.commentId;
-                  form.dataset.replyToName = c.userName;
-                  replyStatusEl.innerHTML = `Membalas <strong>${escapeHtml(c.userName)}</strong> <button type="button" class="cancel-reply-btn text-red-500 ml-2">[Batal]</button>`;
-                  replyStatusEl.classList.remove('hidden');
-                  commentInput.focus();
-                  
-                  replyStatusEl.querySelector('.cancel-reply-btn').addEventListener('click', resetReplyState);
-              });
-              
-              const replies = repliesMap.get(c.commentId) || [];
-              if (replies.length > 0) {
-                  const repliesContainer = document.createElement('div');
-                  repliesContainer.className = 'ml-6 space-y-3 hidden'; 
-                  
-                  replies.forEach(r => {
-                      const replyEl = createCommentElement(r, true); 
-                      repliesContainer.appendChild(replyEl);
-                  });
-                  
-                  const viewRepliesBtn = document.createElement('button');
-                  viewRepliesBtn.className = 'view-replies-btn text-sm font-semibold text-gray-600 hover:underline ml-10 mt-1';
-                  viewRepliesBtn.textContent = `Lihat ${replies.length} balasan...`;
-                  viewRepliesBtn.addEventListener('click', () => {
-                      repliesContainer.classList.toggle('hidden');
-                      viewRepliesBtn.textContent = repliesContainer.classList.contains('hidden') ? `Lihat ${replies.length} balasan...` : 'Sembunyikan balasan';
-                  });
-                  
-                  commentsContainer.appendChild(viewRepliesBtn);
-                  commentsContainer.appendChild(repliesContainer);
-              }
-          });
-          
-
-          const commentToggleBtn = div.querySelector(".comment-toggle");
-          commentToggleBtn.addEventListener('click', () => {
-            commentsArea.classList.toggle('hidden');
-          });
-          
-          form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const commentText = commentInput.value.trim();
-            if (!commentText) return;
-            const user = auth.currentUser;
-            if (!user) return showModalMessage("Kesalahan", "Harus login dulu untuk berkomentar!");
-            
-            const newCommentId = "c_" + Date.now() + Math.random().toString(36).substring(2, 9);
-            const parentId = form.dataset.replyToId || null;
-            const parentName = form.dataset.replyToName || null;
-            
-            const commentData = {
-                commentId: newCommentId,
-                replyTo: parentId,
-                replyToName: parentName,
-                userId: user.uid,
-                userName: user.displayName || user.email,
-                text: commentText,
-                createdAt: new Date(),
-                userAvatarId: currentUserAvatarId,
-                isVerified: isCurrentUserVerified
-            };
-            
-            try {
-              await updateDoc(doc(db, "curhatan", id), {
-                comments: arrayUnion(commentData)
-              });
-              e.target.reset();
-              resetReplyState();
-            } catch (err) {
-              console.error("Gagal kirim komentar:", err);
-              showModalMessage("Gagal kirim komentar", err.message);
-            }
-          });
-          
-          curhatList.appendChild(div);
+          // PERUBAHAN: Panggil fungsi createPostElement
+          const postElement = createPostElement(docSnap);
+          curhatList.appendChild(postElement);
         });
       }, (err) => {
         console.error("Listen curhatan error:", err);
       });
       return unsub;
+    }
+    
+    // --- PERUBAHAN: Buat Elemen Postingan (Reusable) ---
+    function createPostElement(docSnap) {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        const displayName = data.userName || data.user || "Anon";
+        const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
+        const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
+        
+        const backgroundData = data.background;
+        const locationData = data.location;
+        const feelingData = data.feeling;
+        const postAvatarId = data.userAvatarId; 
+        const postIsVerified = data.isVerified || false; 
+        const postUserId = data.userId; // <-- Ambil userId
+        
+        let feelingDisplay = '';
+        if (feelingData) {
+            const actionText = feelingData.type === 'feeling' ? 'merasa' : 'sedang';
+            feelingDisplay = ` ${escapeHtml(feelingData.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(feelingData.text)}.</span>`;
+        }
+        
+        const mapPlaceholder = (!backgroundData && locationData) 
+            ? `<div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">...</div>` : '';
+          
+        const div = document.createElement("div");
+        div.className = `post-card mb-3 shadow-md`; 
+        
+        const avatarData = DUMMY_AVATARS.find(a => a.id === postAvatarId);
+        const avatarInnerHtml = avatarData ? avatarData.svg : (displayName[0] ? displayName[0].toUpperCase() : '?');
+        const avatarClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
+        
+        const postCheckmarkHtml = postIsVerified ? VERIFIED_BADGE_SVG : ''; 
+        
+        const userInfoHtml = `
+          <div class="p-4">
+              <div class="flex items-center mb-3 relative">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-2 ${avatarClasses}">
+                      ${avatarInnerHtml}
+                  </div>
+                  <div class="flex-grow">
+                      <p class="font-semibold text-gray-900 flex items-center">
+                          <button type="button" class="profile-link-btn font-semibold hover:underline">
+                              <span>${escapeHtml(displayName)}</span>
+                          </button>
+                          ${postCheckmarkHtml}
+                          ${feelingDisplay}
+                          ${!backgroundData && locationData ? `<span class="font-normal ml-1"> di <a href="#" class="font-bold text-fb-blue hover:underline">${escapeHtml(locationData.name)}</a></span>` : ''}
+                      </p>
+                      <p class="text-xs text-gray-500">${time} · Publik</p>
+                  </div>
+                  ${isOwnPost ? `
+                  <div class="ml-auto">
+                      <button type="button" class="delete-menu-btn text-gray-500 hover:text-gray-800 p-1 rounded-full">
+                          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+                      </button>
+                      <div class="delete-dropdown w-40">
+                          <button type="button" class="delete-post-btn w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                              Hapus Postingan
+                          </button>
+                      </div>
+                  </div>
+                  ` : ''}
+              </div>
+          </div>
+        `;
+        
+        const postContentHtml = backgroundData ?
+          `<div class="${backgroundData.css} ${backgroundData.textStyle} aspect-video flex items-center justify-center p-6 text-center whitespace-pre-wrap mx-4 rounded-lg">
+              ${escapeHtml(data.text)}
+          </div>`
+          :
+          `<div class="px-4">
+              <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
+              ${mapPlaceholder}
+          </div>`;
+        
+        const likes = data.likes || [];
+        const isLiked = auth.currentUser ? likes.includes(auth.currentUser.uid) : false;
+        
+        const buttonsHtml = `
+          <div class="p-4 pt-0">
+              <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
+                  <button class="like-btn flex items-center ${isLiked ? 'text-fb-blue' : 'text-gray-600'} hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
+                      <span class="like-text">${isLiked ? 'Disukai' : 'Suka'}</span>
+                      <span class="like-count ml-1">(${likes.length})</span>
+                  </button>
+                  <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                      Komentar (${(data.comments || []).length})
+                  </button>
+                  <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
+                      Bagikan
+                  </button>
+              </div>
+          </div>
+        `;
+        
+        const user = auth.currentUser;
+        const userAvatarData = DUMMY_AVATARS.find(a => a.id === currentUserAvatarId);
+        const userAvatarInnerHtml = userAvatarData ? userAvatarData.svg : (user ? (user.displayName[0] ? user.displayName[0].toUpperCase() : '?') : 'A');
+        const userAvatarClasses = userAvatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
+
+        const commentsHtml = `
+          <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
+              <div class="comments space-y-3 mb-4">
+                </div>
+              
+              <div class="reply-status-container text-sm text-gray-500 mb-2 hidden"></div>
+              
+              <form class="commentForm flex gap-2 items-center">
+                  <div class="currentUserCommentAvatar w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${userAvatarClasses}">
+                      ${userAvatarInnerHtml}
+                  </div>
+                  <input type="text" placeholder="Tulis komentar..." required
+                      class="comment-input flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
+                  >
+                  <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m8 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  </button>
+              </form>
+          </div>
+        `;
+        
+        div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
+        
+        // --- Listener Tombol Suka ---
+        const likeBtn = div.querySelector(".like-btn");
+        likeBtn.addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (!user) {
+                showModalMessage("Kesalahan", "Anda harus login untuk menyukai postingan.");
+                return;
+            }
+            
+            const postRef = doc(db, "curhatan", id);
+            const currentLikes = (docSnap.data().likes || []);
+            const isCurrentlyLiked = currentLikes.includes(user.uid);
+
+            try {
+                if (isCurrentlyLiked) {
+                    await updateDoc(postRef, { likes: arrayRemove(user.uid) });
+                } else {
+                    await updateDoc(postRef, { likes: arrayUnion(user.uid) });
+                }
+            } catch (err) {
+                console.error("Gagal update like:", err);
+                showModalMessage("Gagal", "Gagal memperbarui suka.");
+            }
+        });
+        
+        // --- Listener Tombol Hapus ---
+        const deleteMenuBtn = div.querySelector(".delete-menu-btn");
+        const deleteDropdown = div.querySelector(".delete-dropdown");
+        const deletePostBtn = div.querySelector(".delete-post-btn");
+
+        if (isOwnPost && deleteMenuBtn) {
+            deleteMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                document.querySelectorAll('.delete-dropdown.show').forEach(el => {
+                    if(el !== deleteDropdown) el.classList.remove('show');
+                });
+                deleteDropdown.classList.toggle('show');
+            });
+
+            deletePostBtn.addEventListener('click', async () => {
+                if (confirm("Anda yakin ingin menghapus postingan ini? Tindakan ini tidak bisa dibatalkan.")) {
+                    try {
+                        await deleteDoc(doc(db, "curhatan", id));
+                    } catch (err) {
+                        console.error("Gagal hapus postingan:", err);
+                        showModalMessage("Gagal", "Tidak dapat menghapus postingan.");
+                    }
+                }
+                deleteDropdown.classList.remove('show');
+            });
+        }
+        
+        // --- Listener Tombol Profil ---
+        const profileLinkBtn = div.querySelector(".profile-link-btn");
+        if (profileLinkBtn) {
+            profileLinkBtn.addEventListener('click', () => {
+                openProfilePage(postUserId);
+            });
+        }
+        
+        // --- Logika untuk Render & Balas Komentar ---
+        const commentsArea = div.querySelector(".comments-area");
+        const commentsContainer = commentsArea.querySelector(".comments");
+        const form = commentsArea.querySelector(".commentForm");
+        const commentInput = form.querySelector(".comment-input");
+        const replyStatusEl = commentsArea.querySelector(".reply-status-container");
+
+        function resetReplyState() {
+            form.dataset.replyToId = '';
+            form.dataset.replyToName = '';
+            replyStatusEl.classList.add('hidden');
+            replyStatusEl.innerHTML = '';
+        }
+        
+        const allComments = (data.comments || []).map((c, i) => {
+            if (!c.commentId) {
+                c.commentId = `c_${c.createdAt?.seconds || i}_${c.userId}`;
+            }
+            return c;
+        });
+        
+        const repliesMap = new Map();
+        const mainComments = [];
+        
+        allComments.forEach(c => {
+            if (c.replyTo) {
+                if (!repliesMap.has(c.replyTo)) {
+                    repliesMap.set(c.replyTo, []);
+                }
+                repliesMap.get(c.replyTo).push(c);
+            } else {
+                mainComments.push(c);
+            }
+        });
+
+        mainComments.forEach(c => {
+            const commentEl = createCommentElement(c); 
+            commentsContainer.appendChild(commentEl);
+            
+            commentEl.querySelector('.reply-btn').addEventListener('click', () => {
+                form.dataset.replyToId = c.commentId;
+                form.dataset.replyToName = c.userName;
+                replyStatusEl.innerHTML = `Membalas <strong>${escapeHtml(c.userName)}</strong> <button type="button" class="cancel-reply-btn text-red-500 ml-2">[Batal]</button>`;
+                replyStatusEl.classList.remove('hidden');
+                commentInput.focus();
+                
+                replyStatusEl.querySelector('.cancel-reply-btn').addEventListener('click', resetReplyState);
+            });
+            
+            const replies = repliesMap.get(c.commentId) || [];
+            if (replies.length > 0) {
+                const repliesContainer = document.createElement('div');
+                repliesContainer.className = 'ml-6 space-y-3 hidden'; 
+                
+                replies.forEach(r => {
+                    const replyEl = createCommentElement(r, true); 
+                    repliesContainer.appendChild(replyEl);
+                });
+                
+                const viewRepliesBtn = document.createElement('button');
+                viewRepliesBtn.className = 'view-replies-btn text-sm font-semibold text-gray-600 hover:underline ml-10 mt-1';
+                viewRepliesBtn.textContent = `Lihat ${replies.length} balasan...`;
+                viewRepliesBtn.addEventListener('click', () => {
+                    repliesContainer.classList.toggle('hidden');
+                    viewRepliesBtn.textContent = repliesContainer.classList.contains('hidden') ? `Lihat ${replies.length} balasan...` : 'Sembunyikan balasan';
+                });
+                
+                commentsContainer.appendChild(viewRepliesBtn);
+                commentsContainer.appendChild(repliesContainer);
+            }
+        });
+        
+
+        const commentToggleBtn = div.querySelector(".comment-toggle");
+        commentToggleBtn.addEventListener('click', () => {
+          commentsArea.classList.toggle('hidden');
+        });
+        
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const commentText = commentInput.value.trim();
+          if (!commentText) return;
+          const user = auth.currentUser;
+          if (!user) return showModalMessage("Kesalahan", "Harus login dulu untuk berkomentar!");
+          
+          const newCommentId = "c_" + Date.now() + Math.random().toString(36).substring(2, 9);
+          const parentId = form.dataset.replyToId || null;
+          const parentName = form.dataset.replyToName || null;
+          
+          const commentData = {
+              commentId: newCommentId,
+              replyTo: parentId,
+              replyToName: parentName,
+              userId: user.uid,
+              userName: user.displayName || user.email,
+              text: commentText,
+              createdAt: new Date(),
+              userAvatarId: currentUserAvatarId,
+              isVerified: isCurrentUserVerified
+          };
+          
+          try {
+            await updateDoc(doc(db, "curhatan", id), {
+              comments: arrayUnion(commentData)
+            });
+            e.target.reset();
+            resetReplyState();
+          } catch (err) {
+            console.error("Gagal kirim komentar:", err);
+            showModalMessage("Gagal kirim komentar", err.message);
+          }
+        });
+        
+        return div; // Kembalikan elemen div yang sudah jadi
     }
     
     // --- Helper: Buat Elemen Komentar ---
@@ -1249,7 +1290,9 @@
                 </div>
                 <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
                     <p class="font-semibold text-sm text-gray-800 flex items-center">
-                        <span>${escapeHtml(c.userName || c.user)}</span>
+                        <button type="button" class="profile-link-btn font-semibold hover:underline">
+                           <span>${escapeHtml(c.userName || c.user)}</span>
+                        </button>
                         ${commenterCheckmarkHtml}
                     </p>
                     <p class="text-sm text-gray-700 break-words">${textContent}</p>
@@ -1263,6 +1306,12 @@
             </div>
             ` : ''}
         `;
+        
+        // PERUBAHAN: Tambah listener profil di nama komentator
+        el.querySelector('.profile-link-btn').addEventListener('click', () => {
+            openProfilePage(c.userId);
+        });
+        
         return el;
     }
     
@@ -1282,6 +1331,82 @@
         interval = seconds / 60; // menit
         if (interval > 1) return Math.floor(interval) + " mnt";
         return "baru saja";
+    }
+
+    // --- PERUBAHAN: Listener untuk Postingan di Halaman Profil ---
+    function listenProfilePosts(userId) {
+        const q = query(
+            collection(db, "curhatan"), 
+            where("userId", "==", userId), 
+            orderBy("createdAt", "desc")
+        );
+        
+        const unsub = onSnapshot(q, (snapshot) => {
+            profilePostList.innerHTML = "";
+            
+            if (snapshot.empty) {
+                profilePostList.innerHTML = `
+                    <p class="text-center text-gray-500 mt-10">Pengguna ini belum memiliki postingan.</p>
+                `;
+                return;
+            }
+
+            snapshot.forEach((docSnap) => {
+                const postElement = createPostElement(docSnap);
+                profilePostList.appendChild(postElement);
+            });
+        }, (err) => {
+            console.error("Listen profile posts error:", err);
+            profilePostList.innerHTML = `<p class="text-center text-red-500 mt-10">Gagal memuat postingan.</p>`;
+        });
+        return unsub;
+    }
+    
+    // --- PERUBAHAN: Fungsi untuk Membuka Halaman Profil ---
+    async function openProfilePage(userId) {
+        if (!userId) return;
+        
+        // Hentikan listener postingan profil lama
+        if (unsubscribeProfilePosts) unsubscribeProfilePosts();
+        
+        profilePostList.innerHTML = '<p class="text-center text-gray-500 mt-10">Memuat postingan...</p>';
+        
+        // Ambil data user untuk ditampilkan di header profil
+        try {
+            const userDoc = await getDoc(doc(db, "users", userId));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const displayName = userData.name || "Pengguna";
+                const avatarId = userData.avatarId || null;
+                const isVerified = userData.isVerified || false;
+                
+                profileHeaderName.textContent = displayName;
+                profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
+                profileViewEmail.textContent = userData.email || '';
+                
+                const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
+                const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
+                const innerHtml = avatarData ? avatarData.svg.replace('avatar-icon', 'avatar-icon-lg') : avatarLetter;
+                const baseClasses = "w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl mb-4";
+                const colorClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
+                profileViewAvatar.innerHTML = innerHtml;
+                profileViewAvatar.className = `${baseClasses} ${colorClasses}`;
+
+            } else {
+                profileViewName.innerHTML = `<span>Pengguna Tak Dikenal</span>`;
+                profileViewEmail.textContent = '';
+                profileViewAvatar.innerHTML = '?';
+                profileViewAvatar.className = "w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl mb-4 bg-gray-300 text-gray-700";
+            }
+        } catch (err) {
+            console.error("Gagal ambil data profil:", err);
+            profileViewName.innerHTML = `<span>Gagal memuat profil</span>`;
+        }
+
+        navigateTo('Profile');
+        
+        // Mulai listen ke postingan user ini
+        unsubscribeProfilePosts = listenProfilePosts(userId);
     }
 
 
@@ -1322,7 +1447,6 @@
 
     // --- Helper: Generate Dummy Posts ---
     function generateDummyPosts() {
-        // ... (Fungsi ini tidak diubah, tidak perlu centang di dummy)
         return ""; 
     }
 
@@ -1644,7 +1768,7 @@
           <div class="w-6"></div></header>
 
       <div class="flex-grow overflow-y-auto p-4">
-          <div class="bg-white p-4 rounded-lg shadow-md mb-4 flex items-center">
+          <div class="bg-white p-4 rounded-lg shadow-md mb-4 flex items-center cursor-pointer" id="menuProfileLink">
               <div id="menuAvatarDisplay" class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-700 mr-4">
                   ?
               </div>
@@ -1681,10 +1805,10 @@
 
       <div class="flex-grow overflow-y-auto p-4">
           <div class="flex flex-col items-center bg-white p-6 rounded-lg shadow-md mb-4">
-              <div id="settingsAvatarDisplay" class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-4xl font-bold text-gray-700 mb-4">
+              <div id="settingsAvatarDisplay" class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-4xl font-bold text-gray-700 mb-4 cursor-pointer">
                   ?
               </div>
-              <h3 id="settingsProfileName" class="text-2xl font-bold text-gray-900 flex items-center justify-center">Nama Pengguna</h3>
+              <h3 id="settingsProfileName" class="text-2xl font-bold text-gray-900 flex items-center justify-center cursor-pointer">Nama Pengguna</h3>
               <p class="text-sm text-gray-600">Konexa App</p>
           </div>
           
@@ -1747,6 +1871,32 @@
                   Ganti Nama GC
                   <span class="text-xs block font-normal">(Fitur admin, segera hadir)</span>
               </button>
+          </div>
+      </div>
+  </div>
+  
+  
+  <div id="profileView" class="hidden pt-16"> 
+      <header class="modal-header fixed top-0 left-0 right-0 flex items-center p-4 border-b border-gray-200 shadow-sm z-10">
+          <button id="profileBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 id="profileHeaderName" class="text-xl font-bold text-gray-900 mx-auto">Profil</h2>
+          <div class="w-6"></div>
+      </header>
+  
+      <div class="flex-grow overflow-y-auto p-4">
+          <div class="flex flex-col items-center bg-white p-6 rounded-lg shadow-md mb-4">
+              <div id="profileViewAvatar" class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-4xl font-bold text-gray-700 mb-4">
+                  ?
+              </div>
+              <h3 id="profileViewName" class="text-2xl font-bold text-gray-900 flex items-center justify-center">Nama Pengguna</h3>
+              <p id="profileViewEmail" class="text-sm text-gray-600"></p>
+          </div>
+          
+          <h4 class="text-lg font-bold text-gray-800 my-4">Postingan Pengguna</h4>
+          <div id="profilePostList">
+              <p class="text-center text-gray-500 mt-10">Memuat postingan...</p>
           </div>
       </div>
   </div>
