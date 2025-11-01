@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale-1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Konexa App 💬</title>
 
   
@@ -196,9 +196,11 @@
     let selectedChatThemeId = 'default'; 
 
     // --- SVG Verifikasi ---
+    // PERUBAHAN DI SINI: SVG diganti dengan yang bulat
     const VERIFIED_BADGE_SVG = `
-      <svg class="w-4 h-4 text-fb-blue ml-1 shrink-0" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19.965 8.521C19.988 8.049 20 7.573 20 7.091 20 3.175 16.825 0 12.909 0C8.993 0 5.818 3.175 5.818 7.091c0 .482.012.958.035 1.43C2.263 9.475 0 12.917 0 16.909c0 3.917 3.175 7.091 7.091 7.091c.482 0 .958-.012 1.43-.035C9.475 21.737 12.917 24 16.909 24c3.917 0 7.091-3.175 7.091-7.091c0-3.992-2.263-7.434-5.835-8.388zM15.86 14.832l-4.144 4.144a.71.71 0 01-1.004 0l-2.071-2.071a.71.71 0 010-1.004.71.71 0 011.004 0l1.569 1.569l3.642-3.642a.71.71 0 011.004 0a.71.71 0 010 1.004z"></path>
+      <svg class="w-4 h-4 text-fb-blue ml-1 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/>
+        <path fill="#FFFFFF" d="M9.999 17.27l-4.5-4.5a.996.996 0 111.41-1.41l3.09 3.09 7.09-7.09a.996.996 0 111.41 1.41l-8.5 8.5a.996.996 0 01-1.41 0z"/>
       </svg>
     `;
 
@@ -500,7 +502,7 @@
         }
         // Tambahkan cek verifikasi
         const checkmarkHtml = isCurrentUserVerified ? VERIFIED_BADGE_SVG : '';
-        postUsernameText.innerHTML = `<span>${escapeHtml(name)}</span>${feelingHTML}${checkmarkHtml}`;
+        postUsernameText.innerHTML = `<span>${escapeHtml(name)}</span>${checkmarkHtml}${feelingHTML}`;
     }
     function renderFeelingList(items, type) {
         feelingList.innerHTML = '';
@@ -967,7 +969,24 @@
                 ${mapPlaceholder}
             </div>`;
           
-          const buttonsHtml = `...`; // Disingkat agar tidak terlalu panjang
+          const buttonsHtml = `
+            <div class="p-4 pt-0">
+                <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg classs="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
+                        Suka
+                    </button>
+                    <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        Komentar (${(data.comments || []).length})
+                    </button>
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
+                        Bagikan
+                    </button>
+                </div>
+            </div>
+          `;
           
           const user = auth.currentUser;
           const userAvatarData = DUMMY_AVATARS.find(a => a.id === currentUserAvatarId);
@@ -1006,12 +1025,14 @@
                     <input type="text" placeholder="Tulis komentar..." required
                         class="flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
                     >
-                    <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">...</button>
+                    <button class="text-fb-blue hover:opacity-75 transition duration-150 p-2 rounded-full">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m8 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
                 </form>
             </div>
           `;
           
-          div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml.replace('...', '') + commentsHtml;
+          div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
             
           const commentToggleBtn = div.querySelector(".comment-toggle");
           const commentsArea = div.querySelector(".comments-area");
