@@ -79,7 +79,7 @@
     }
     
     /* Modal fullscreen */
-    #locationModal, #feelingModal, #chatView, #menuView, #settingsView {
+    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #avatarModal {
         background: #fff;
         display: none; 
         position: fixed;
@@ -90,7 +90,7 @@
         z-index: 1000; 
     }
     
-    #chatView, #menuView, #settingsView {
+    #chatView, #menuView, #settingsView, #avatarModal {
         z-index: 3000; 
         background-color: #F0F2F5; /* Latar belakang abu-abu */
     }
@@ -139,12 +139,25 @@
     
     /* Styling untuk text area dengan background */
     textarea.with-background {
-        /* padding-top: 10%; (DIHAPUS untuk vertical centering) */
         background-size: cover;
         background-position: center;
     }
     textarea.with-background::placeholder {
         color: #ffffffaa; /* Placeholder warna putih transparan */
+    }
+    
+    /* Styling untuk avatar SVG */
+    .avatar-icon {
+        width: 60%;
+        height: 60%;
+    }
+    .avatar-icon-sm {
+        width: 60%;
+        height: 60%;
+    }
+    .avatar-icon-lg {
+        width: 60%;
+        height: 60%;
     }
   </style>
 
@@ -164,7 +177,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast } 
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
@@ -176,7 +189,9 @@
     let selectedLocation = null; 
     let selectedFeeling = null; 
     let selectedBackground = null; // State untuk background
-    
+    let currentUserAvatarId = null; // State untuk avatar
+    let userDocUnsubscribe = null; // Listener untuk user doc
+
     // --- Data Dummy ---
     const DUMMY_LOCATIONS = [
       { name: "Pantai Bahari Jeneponto", detail: "Jeneponto · Jeneponto, South Sulawesi" },
@@ -190,7 +205,6 @@
     
     // Data Latar Belakang Postingan
     const DUMMY_BACKGROUNDS = [
-        // id 'default' SANGAT PENTING
         { id: 'default', css: 'bg-white', textStyle: 'text-xl text-gray-800' }, 
         { id: 'pink-grad', css: 'bg-gradient-to-br from-pink-500 to-fuchsia-600', textStyle: 'text-3xl text-white font-bold' },
         { id: 'purple-grad', css: 'bg-gradient-to-tr from-purple-600 to-indigo-800', textStyle: 'text-3xl text-white font-bold' },
@@ -198,6 +212,16 @@
         { id: 'green-grad', css: 'bg-gradient-to-br from-green-400 to-blue-500', textStyle: 'text-3xl text-white font-bold' },
         { id: 'black-solid', css: 'bg-gray-900', textStyle: 'text-3xl text-white font-bold' },
         { id: 'red-solid', css: 'bg-red-600', textStyle: 'text-3xl text-white font-bold' },
+    ];
+    
+    // Data Avatar
+    const DUMMY_AVATARS = [
+        { id: 'ghost', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10s10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8s8 3.589 8 8s-3.589 8-8 8z"></path><path d="M12 17c2.757 0 5-2.243 5-5s-2.243-5-5-5s-5 2.243-5 5s2.243 5 5 5zm0-8c1.654 0 3 1.346 3 3s-1.346 3-3 3s-3-1.346-3-3s1.346-3 3-3z"></path><circle cx="8.5" cy="10.5" r="1.5"></circle><circle cx="15.5" cy="10.5" r="1.5"></circle></svg>` },
+        { id: 'heart', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>` },
+        { id: 'star', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>` },
+        { id: 'fire', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M13.4 2.09c-.21-.06-.42-.09-.65-.09-2.19 0-3.98 1.6-4.42 3.66C6.1 7.23 5 9.97 5 13c0 3.87 3.13 7 7 7s7-3.13 7-7c0-3.03-1.1-5.77-3.35-7.34C15.15 4.1 14.18 2.8 13.4 2.09zM12 18c-2.76 0-5-2.24-5-5 0-2.34 1.25-4.4 3.08-5.45l.42-.24.16-.45C11.12 5.5 11.54 4 12.95 4c.64 0 1.15.52 1.15 1.15 0 .28-.11.55-.3.76l-.44.51-.23.47c-1.83 2.1-2.13 4.95-1.12 7.37.64 1.54 2.08 2.74 3.85 2.74 1.09 0 2.08-.43 2.84-1.13C17.43 16.7 15.1 18 12 18z"></path></svg>` },
+        { id: 'leaf', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm-1.92 14.65c-.48-.09-.88-.41-1.04-.84l-2.03-5.21c-.13-.33-.03-.7.24-.97.27-.27.64-.37.97-.24l5.21 2.03c.43.17.75.56.84 1.04.09.48.01 1.03-.23 1.48-.25.45-.66.86-1.11 1.11-.45.24-1 .32-1.48.23zm3.5-2.23l-3.99-1.55 1.55 3.99c.1.26.02.56-.19.77-.21.21-.51.29-.77.19l-3.99-1.55c-.26-.1-.48-.32-.57-.59-.09-.26-.06-.54.08-.78l.01-.01 5.08-5.08.01-.01c.24-.14.52-.17.78-.08.27.09.49.31.59.57l1.55 3.99c.1.26.02.56-.19.77-.21.21-.51.29-.77.19z"></path></svg>` },
+        { id: 'planet', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm6.27 12.57c-.43.51-1.03.85-1.7.99-1.28.27-2.61.12-3.8-.4-1.19-.52-2.22-1.32-3-2.31-.78-.99-1.29-2.18-1.45-3.43-.16-1.25.1-2.52.74-3.6.43-.72 1.04-1.32 1.77-1.71.73-.39 1.54-.6 2.37-.58 1.28.03 2.53.5 3.53 1.34.42.35.8.76 1.13 1.22.33.46.59.97.77 1.5.18.53.28 1.08.28 1.63s-.1 1.1-.28 1.63c-.18.53-.44 1.04-.77 1.5-.33.46-.71.87-1.13 1.22z"></path><path d="M15.42 16.5c-1.39.56-2.9.7-4.42.37-1.52-.33-2.9-1.1-3.96-2.22-.3-.31-.57-.65-.82-.99-.08-.11-.16-.22-.23-.34-.14-.23-.27-.47-.39-.71-.24-.5-.43-1.02-.56-1.55-.13-.53-.19-1.08-.19-1.62 0-.54.06-1.09.19-1.62.13-.53.32-1.05.56-1.55.12-.24.25-.48.39-.71.07-.12.15-.23.23-.34.25-.34.52-.68.82-.99 1.06-1.12 2.44-1.89 3.96-2.22 1.52-.33 3.03-.2 4.42.37 1.39.56 2.6 1.51 3.47 2.73.18.25.35.51.5.78.29.53.53 1.09.69 1.67.16.58.24 1.18.24 1.79s-.08 1.21-.24 1.79c-.16.58-.4 1.14-.69 1.67-.15.27-.32.53-.5.78-.87 1.22-2.08 2.17-3.47 2.73z"></path></svg>` }
     ];
 
 
@@ -255,6 +279,18 @@
     
     // Elemen Background
     const backgroundSelectorContainer = document.getElementById('backgroundSelectorContainer');
+    
+    // Elemen Avatar
+    const avatarModal = document.getElementById('avatarModal');
+    const avatarList = document.getElementById('avatarList');
+    const avatarModalBackBtn = document.getElementById('avatarModalBackBtn');
+    const openAvatarModalBtn = document.getElementById('openAvatarModalBtn');
+    
+    // Elemen Display Avatar (Container)
+    const mainAvatarDisplay = document.getElementById('mainAvatarDisplay');
+    const postAvatarDisplay = document.getElementById('postAvatarDisplay');
+    const menuAvatarDisplay = document.getElementById('menuAvatarDisplay');
+    const settingsAvatarDisplay = document.getElementById('settingsAvatarDisplay');
 
 
     // --- Fungsi Navigasi Halaman ---
@@ -268,6 +304,7 @@
       chatView.style.display = 'none';
       menuView.style.display = 'none'; 
       settingsView.style.display = 'none'; 
+      avatarModal.style.display = 'none'; 
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -284,6 +321,8 @@
         menuView.style.display = 'flex';
       } else if (page === 'Settings') { 
         settingsView.style.display = 'flex';
+      } else if (page === 'Avatar') { 
+        avatarModal.style.display = 'flex';
       }
     }
 
@@ -321,6 +360,10 @@
     menuSettingsBtn.addEventListener('click', () => navigateTo('Settings'));
     menuLogoutBtn.addEventListener('click', () => signOut(auth)); 
     settingsBackBtn.addEventListener('click', () => navigateTo('Menu'));
+
+    // Navigasi Avatar
+    openAvatarModalBtn.addEventListener('click', () => navigateTo('Avatar'));
+    avatarModalBackBtn.addEventListener('click', () => navigateTo('Settings'));
 
 
     // --- Event Listener Lokasi ---
@@ -415,7 +458,7 @@
         const user = auth.currentUser;
         if (!user) return;
         const name = user.displayName || user.email;
-        postAvatarLetter.textContent = name[0] || '?'; 
+        // Avatar diurus oleh updateProfileUI
         let feelingHTML = '';
         if (selectedFeeling) {
             const actionText = selectedFeeling.type === 'feeling' ? 'merasa' : 'sedang';
@@ -449,47 +492,37 @@
 
     // --- Fungsi Render & Logika Background ---
     
-    // Mengubah tampilan postView berdasarkan background
     function applyPostViewBackground() {
         const postBody = curhatForm.parentElement; // Div flex-grow
         const textarea = curhatForm.text;
-        const form = curhatForm; // <-- PERUBAHAN
+        const form = curhatForm; 
         
-        // Dapatkan bg yang dipilih, atau default jika null
         const bg = selectedBackground || DUMMY_BACKGROUNDS[0]; 
         
-        // Hapus semua class bg & text lama
         DUMMY_BACKGROUNDS.forEach(b => {
             postBody.classList.remove(...b.css.split(' '));
             textarea.classList.remove(...b.css.split(' '));
             textarea.classList.remove(...b.textStyle.split(' '));
         });
-        // Hapus class styling manual
-        textarea.classList.remove('text-center', 'text-left', 'with-background', 'bg-transparent');
-        textarea.classList.remove('flex-grow'); // <-- PERUBAHAN
+        textarea.classList.remove('text-center', 'text-left', 'with-background', 'bg-transparent', 'flex-grow');
         postBody.classList.remove('bg-white', 'p-4', 'flex', 'items-center', 'justify-center');
-        form.classList.remove('flex-grow', 'flex-col'); // <-- PERUBAHAN
+        form.classList.remove('flex-grow', 'flex-col'); 
         
         if (bg.id === 'default') {
-            // Tampilan Teks Polos
             postUserAvatarBlock.classList.remove('hidden');
-            postBody.classList.add('bg-white'); // p-4 dihapus, diatur di elemen child
-            form.classList.add('flex-grow', 'flex-col'); // <-- PERUBAHAN
+            postBody.classList.add('bg-white'); 
+            form.classList.add('flex-grow', 'flex-col'); 
             textarea.classList.add(...bg.textStyle.split(' '), 'text-left');
-            textarea.classList.add('flex-grow'); // <-- PERUBAHAN
+            textarea.classList.add('flex-grow'); 
             textarea.placeholder = 'Apa yang Anda pikirkan?';
         } else {
-            // Tampilan Teks dengan Background
             postUserAvatarBlock.classList.add('hidden');
             postBody.classList.add(...bg.css.split(' '), 'flex', 'items-center', 'justify-center');
-            // form TIDAK punya flex-grow
             textarea.classList.add(...bg.textStyle.split(' '), 'text-center', 'with-background', 'bg-transparent');
-            // textarea TIDAK punya flex-grow
             textarea.placeholder = 'Mulai mengetik...';
         }
     }
 
-    // Mengisi pilihan background di postView
     function renderBackgroundSelector() {
         backgroundSelectorContainer.innerHTML = '';
         DUMMY_BACKGROUNDS.forEach(bg => {
@@ -497,10 +530,8 @@
             item.type = 'button';
             item.className = 'w-10 h-16 rounded-lg shrink-0 cursor-pointer border-2 border-gray-300 hover:border-fb-blue focus:border-fb-blue';
             
-            // Terapkan style
             item.classList.add(...bg.css.split(' '));
 
-            // Tambahkan 'A' putih untuk default
             if (bg.id === 'default') {
                 item.innerHTML = `<span class="font-bold text-xl text-gray-700">A</span>`;
                 item.classList.add('flex', 'items-center', 'justify-center');
@@ -508,10 +539,38 @@
             
             item.addEventListener('click', () => {
                 selectedBackground = bg;
-                applyPostViewBackground(); // Terapkan style
+                applyPostViewBackground();
             });
             backgroundSelectorContainer.appendChild(item);
         });
+    }
+    
+    // --- Fungsi Render & Logika Avatar ---
+    function renderAvatarList() {
+        avatarList.innerHTML = '';
+        DUMMY_AVATARS.forEach(avatar => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'aspect-square bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-300 focus:ring-2 focus:ring-fb-blue';
+            item.innerHTML = avatar.svg.replace('avatar-icon', 'avatar-icon-lg');
+            
+            item.addEventListener('click', () => {
+                selectAvatar(avatar.id);
+            });
+            avatarList.appendChild(item);
+        });
+    }
+    
+    async function selectAvatar(avatarId) {
+        const user = auth.currentUser;
+        if (!user) return showModalMessage("Kesalahan", "Anda harus login.");
+        try {
+            await setDoc(doc(db, "users", user.uid), { avatarId: avatarId }, { merge: true });
+            navigateTo('Settings'); // Kembali ke pengaturan
+        } catch (err) {
+            console.error("Gagal simpan avatar:", err);
+            showModalMessage("Gagal Simpan", "Gagal menyimpan avatar Anda.");
+        }
     }
 
 
@@ -543,39 +602,62 @@
       }
     });
 
-    // Memisahkan fungsi update UI profil
-    function updateProfileUI(user) {
+    // Update UI terpusat
+    function updateProfileUI(user, userData = {}) {
         if (!user) return;
+        
         const displayName = user.displayName || user.email;
-        const avatarLetter = displayName[0] || '?';
+        const avatarId = userData.avatarId || null;
+        currentUserAvatarId = avatarId; // Update state global
+        
+        const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
+        const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
+        
+        const innerHtml = avatarData ? avatarData.svg : avatarLetter;
+        const baseClasses = "rounded-full flex items-center justify-center font-bold";
+        const colorClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
 
         // 1. Main View (Header)
         userStatusDisplay.textContent = displayName; 
+        mainAvatarDisplay.innerHTML = innerHtml;
+        mainAvatarDisplay.className = `w-10 h-10 ${baseClasses} ${colorClasses} text-lg`;
         
         // 2. Post View
-        renderPostHeader();
+        postAvatarDisplay.innerHTML = innerHtml;
+        postAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} text-xl mr-3`;
+        renderPostHeader(); // Update nama + feeling
         
         // 3. Menu View
         menuProfileName.textContent = displayName;
+        menuAvatarDisplay.innerHTML = innerHtml;
+        menuAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} text-xl mr-4`;
         
         // 4. Settings View
         settingsProfileName.textContent = displayName;
+        settingsAvatarDisplay.innerHTML = innerHtml;
+        settingsAvatarDisplay.className = `w-24 h-24 ${baseClasses} ${colorClasses} text-4xl mb-4`;
         settingsNameInput.value = displayName;
+        
+        // 5. Update semua avatar di kolom komentar
+        const commentAvatars = document.querySelectorAll('.currentUserCommentAvatar');
+        commentAvatars.forEach(avatarEl => {
+            avatarEl.innerHTML = innerHtml;
+            avatarEl.className = `w-8 h-8 ${baseClasses} ${colorClasses} text-sm currentUserCommentAvatar`;
+        });
     }
 
-    // Fungsi ini sekarang hanya menyimpan data
     async function saveProfileName(name) {
       const user = auth.currentUser;
       if (!user) return;
       await updateProfile(user, { displayName: name });
+      // Gunakan { merge: true } agar tidak menghapus avatarId
       await setDoc(doc(db, "users", user.uid), {
         name,
         email: user.email,
         updatedAt: new Date()
-      });
+      }, { merge: true }); // <--- PENTING
     }
 
-    // Form Pendaftaran Awal (Hanya untuk pengguna baru)
     profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = profileNameInput.value.trim();
@@ -583,7 +665,7 @@
       try {
         await saveProfileName(name);
         profileModal.style.display = "none";
-        updateProfileUI(auth.currentUser); // Update UI setelah simpan
+        // updateProfileUI akan dipanggil oleh listener `subscribeToUserDoc`
         navigateTo('Main');
       } catch (err) {
         console.error("Gagal simpan nama:", err);
@@ -591,7 +673,6 @@
       }
     });
     
-    // Form Pengaturan (Untuk ganti nama)
     settingsForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const name = settingsNameInput.value.trim();
@@ -599,7 +680,7 @@
         
         try {
             await saveProfileName(name);
-            updateProfileUI(auth.currentUser); // Update UI setelah simpan
+            // updateProfileUI akan dipanggil oleh listener `subscribeToUserDoc`
             showModalMessage("Sukses", "Nama berhasil diperbarui!");
             navigateTo('Menu'); // Kembali ke Menu
         } catch (err) {
@@ -608,36 +689,53 @@
         }
     });
 
+    // Listener untuk data user di Firestore
+    function subscribeToUserDoc(uid) {
+        if (userDocUnsubscribe) userDocUnsubscribe(); // Stop listener lama
+        
+        userDocUnsubscribe = onSnapshot(doc(db, "users", uid), (docSnap) => {
+            const user = auth.currentUser;
+            if (user) {
+                if (docSnap.exists()) {
+                    updateProfileUI(user, docSnap.data());
+                } else {
+                    // Dokumen user belum ada (mungkin proses daftar?)
+                    updateProfileUI(user, {}); // Update dgn data auth saja
+                }
+            }
+        }, (err) => {
+            console.error("Gagal listen ke user doc:", err);
+        });
+    }
+
 
     let unsubscribeCurhatListener = null;
     let unsubscribeChatListener = null; 
 
     onAuthStateChanged(auth, async (user) => {
-      if (unsubscribeCurhatListener) {
-        unsubscribeCurhatListener();
-        unsubscribeCurhatListener = null;
-      }
-      if (unsubscribeChatListener) {
-        unsubscribeChatListener();
-        unsubscribeChatListener = null;
-      }
+      if (unsubscribeCurhatListener) unsubscribeCurhatListener();
+      if (unsubscribeChatListener) unsubscribeChatListener();
+      if (userDocUnsubscribe) userDocUnsubscribe(); // Hentikan listener user
 
       if (user) {
-        updateProfileUI(user); 
-        
+        // Cek jika display name ada, jika tidak, paksa isi
         if (!user.displayName) {
           profileModal.style.display = "flex";
           navigateTo('Auth'); 
           return;
         }
 
+        // Mulai listen ke data user (termasuk avatar)
+        subscribeToUserDoc(user.uid); 
+        
         profileModal.style.display = "none";
         navigateTo('Main');
 
         unsubscribeCurhatListener = listenCurhatan();
         unsubscribeChatListener = listenGlobalChat();
         
-        renderBackgroundSelector(); // Panggil render background
+        renderBackgroundSelector(); 
+        renderAvatarList(); // Siapkan modal avatar
       } else {
         userStatusDisplay.textContent = "Guest";
         navigateTo('Auth');
@@ -655,10 +753,12 @@
       const postData = {
         text, userId: user.uid, userName, createdAt: new Date(), comments: []
       };
+      // Tambahkan data avatar saat ini ke post
+      if (currentUserAvatarId) {
+          postData.userAvatarId = currentUserAvatarId;
+      }
       if (selectedLocation) { postData.location = selectedLocation; }
       if (selectedFeeling) { postData.feeling = selectedFeeling; }
-      
-      // Tambahkan data background jika dipilih
       if (selectedBackground && selectedBackground.id !== 'default') {
           postData.background = selectedBackground;
       }
@@ -668,8 +768,8 @@
         curhatForm.reset();
         selectedLocation = null; 
         selectedFeeling = null;
-        selectedBackground = null; // Reset
-        applyPostViewBackground(); // Reset tampilan form
+        selectedBackground = null; 
+        applyPostViewBackground(); 
         navigateTo('Main'); 
       } catch (err) {
         console.error("Gagal posting:", err);
@@ -723,44 +823,34 @@
           const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : 'Baru saja';
           const isOwnPost = auth.currentUser && data.userId === auth.currentUser.uid;
           
-          // Cek data background
           const backgroundData = data.background;
-          
           const locationData = data.location;
           const feelingData = data.feeling;
+          const postAvatarId = data.userAvatarId; // Ambil avatar post
+          
           let feelingDisplay = '';
           if (feelingData) {
               const actionText = feelingData.type === 'feeling' ? 'merasa' : 'sedang';
               feelingDisplay = ` ${escapeHtml(feelingData.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(feelingData.text)}.</span>`;
           }
           
-          // Hanya buat map jika BUKAN postingan background
           const mapPlaceholder = (!backgroundData && locationData) 
-              ? `
-                <div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">
-                    <div class="aspect-video flex items-center justify-center text-center text-gray-500 bg-gray-200 border border-gray-300">
-                        <div class="p-4">
-                            <svg class="w-8 h-8 mx-auto mb-2 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
-                            <p class="text-sm font-medium">${escapeHtml(locationData.name)}</p>
-                            <p class="text-xs">${escapeHtml(locationData.detail)}</p>
-                        </div>
-                    </div>
-                </div>
-            ` : '';
+              ? `<div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative">...</div>` : '';
             
           const div = document.createElement("div");
-          // --- PERUBAHAN ---
-          // Kartu postingan SELALU punya shadow
           div.className = `post-card mb-3 shadow-md`; 
           
+          // --- Render Avatar Postingan ---
+          const avatarData = DUMMY_AVATARS.find(a => a.id === postAvatarId);
+          const avatarInnerHtml = avatarData ? avatarData.svg : displayName[0].toUpperCase();
+          const avatarClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
           
-          // Bagian Info Pengguna (Selalu ada)
-          // --- PERUBAHAN ---
-          // Hapus logic `pb-0` dan warna teks. Selalu di background putih.
           const userInfoHtml = `
             <div class="p-4">
                 <div class="flex items-center mb-3">
-                    <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg mr-2">${displayName[0]}</div>
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-2 ${avatarClasses}">
+                        ${avatarInnerHtml}
+                    </div>
                     <div class="flex-grow">
                         <p class="font-semibold text-gray-900">
                             ${escapeHtml(displayName)} 
@@ -774,62 +864,58 @@
             </div>
           `;
           
-          // Bagian Konten Postingan (Teks polos ATAU background)
           const postContentHtml = backgroundData ?
-            // Tampilan Background
-            // --- PERUBAHAN ---
-            // Tambahkan `rounded-lg` jika ada background, dan `mx-4` agar ada padding
             `<div class="${backgroundData.css} ${backgroundData.textStyle} aspect-video flex items-center justify-center p-6 text-center whitespace-pre-wrap mx-4 rounded-lg">
                 ${escapeHtml(data.text)}
             </div>`
             :
-            // Tampilan Teks Polos
             `<div class="px-4">
                 <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
                 ${mapPlaceholder}
             </div>`;
           
-          // Bagian Tombol (Paddingnya beda)
-          // --- PERUBAHAN ---
-          // Hapus semua logic `backgroundData`. Tombol selalu di background putih.
           const buttonsHtml = `
             <div class="p-4 pt-0">
                 <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
-                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
-                        Suka
-                    </button>
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">...</button>
                     <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                         Komentar (${(data.comments || []).length})
                     </button>
-                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
-                        Bagikan
-                    </button>
+                    <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">...</button>
                 </div>
             </div>
           `;
           
-          // Bagian Komentar (Selalu ada)
-          // --- PERUBAHAN ---
-          // Hapus semua logic `backgroundData`. Komentar selalu di background putih/abu.
+          // --- Render Avatar Kolom Komentar ---
+          const user = auth.currentUser;
+          const userAvatarData = DUMMY_AVATARS.find(a => a.id === currentUserAvatarId);
+          const userAvatarInnerHtml = userAvatarData ? userAvatarData.svg : (user ? user.displayName[0].toUpperCase() : 'A');
+          const userAvatarClasses = userAvatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
+
           const commentsHtml = `
             <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
                 <div class="comments space-y-3 mb-4">
-                  ${(data.comments || []).map(c => `
+                  ${(data.comments || []).map(c => {
+                    // Tampilkan avatar komentator (jika ada)
+                    const commenterAvatarData = DUMMY_AVATARS.find(a => a.id === c.userAvatarId);
+                    const commenterAvatarHtml = commenterAvatarData ? commenterAvatarData.svg : (c.userName ? c.userName[0].toUpperCase() : 'A');
+                    const commenterAvatarClasses = commenterAvatarData ? "bg-gray-200 text-gray-700" : "bg-gray-300";
+                    
+                    return `
                     <div class="flex items-start">
-                        <div class="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-semibold mr-2">${c.userName ? c.userName[0] : 'A'}</div>
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mr-2 ${commenterAvatarClasses} shrink-0">
+                           ${commenterAvatarHtml.replace('avatar-icon', 'avatar-icon-sm')}
+                        </div>
                         <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
                             <p class="font-semibold text-sm text-gray-800">${escapeHtml(c.userName || c.user)}</p>
                             <p class="text-sm text-gray-700 break-words">${escapeHtml(c.text)}</p>
                         </div>
                     </div>
-                  `).join("")}
+                  `}).join("")}
                 </div>
                 <form class="commentForm flex gap-2 items-center">
-                    <div class="w-8 h-8 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-sm">
-                        ${auth.currentUser ? auth.currentUser.displayName[0] : 'A'}
+                    <div class="currentUserCommentAvatar w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${userAvatarClasses}">
+                        ${userAvatarInnerHtml}
                     </div>
                     <input type="text" placeholder="Tulis komentar..." required
                         class="flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
@@ -841,17 +927,14 @@
             </div>
           `;
           
-          // --- PERUBAHAN ---
-          // Hapus logic if/else. Selalu gabungkan dengan cara yang sama.
           div.innerHTML = userInfoHtml + postContentHtml + buttonsHtml + commentsHtml;
-          
-          
-          // --- Event Listener Komentar (Tidak Berubah) ---
+            
           const commentToggleBtn = div.querySelector(".comment-toggle");
           const commentsArea = div.querySelector(".comments-area");
           commentToggleBtn.addEventListener('click', () => {
             commentsArea.classList.toggle('hidden');
           });
+          
           const form = div.querySelector(".commentForm");
           form.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -860,10 +943,21 @@
             if (!commentText) return;
             const user = auth.currentUser;
             if (!user) return showModalMessage("Kesalahan", "Harus login dulu untuk berkomentar!");
-            const commenterName = user.displayName || user.email;
+            
+            const commentData = {
+                userId: user.uid,
+                userName: user.displayName || user.email,
+                text: commentText,
+                createdAt: new Date()
+            };
+            // Tambahkan avatar ke data komentar
+            if (currentUserAvatarId) {
+                commentData.userAvatarId = currentUserAvatarId;
+            }
+            
             try {
               await updateDoc(doc(db, "curhatan", id), {
-                comments: arrayUnion({ userId: user.uid, userName: commenterName, text: commentText })
+                comments: arrayUnion(commentData)
               });
               e.target.reset();
             } catch (err) {
@@ -895,18 +989,12 @@
                 container.className = 'chat-message-container';
                 if (isOwnMessage) {
                     container.classList.add('sent');
-                    container.innerHTML = `
-                        <div class="chat-bubble sent">
-                            ${escapeHtml(data.text)}
-                        </div>
-                    `;
+                    container.innerHTML = `<div class="chat-bubble sent">${escapeHtml(data.text)}</div>`;
                 } else {
                     container.classList.add('received');
                     container.innerHTML = `
                         <p class="chat-sender-name">${escapeHtml(data.userName)}</p>
-                        <div class="chat-bubble received">
-                            ${escapeHtml(data.text)}
-                        </div>
+                        <div class="chat-bubble received">${escapeHtml(data.text)}</div>
                     `;
                 }
                 chatMessageList.appendChild(container);
@@ -923,8 +1011,8 @@
     function generateDummyPosts() {
         const dummyData = [
             { name: "Sistem", text: "Curhatanmu akan muncul di sini. Coba buat postingan pertamamu!", time: "Sekarang", location: { name: "Jeneponto", detail: "Sulawesi Selatan" } },
-            { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh.", time: "2 hari lalu", feeling: { emoji: '😊', text: 'senang', type: 'feeling'} },
-            { name: "Contoh BG", text: "Ini contoh postingan dengan background!", time: "3 hari lalu", background: DUMMY_BACKGROUNDS[1] }
+            { name: "Admin", text: "Ini adalah postingan dummy untuk memastikan tampilan feed terlihat penuh.", time: "2 hari lalu", feeling: { emoji: '😊', text: 'senang', type: 'feeling'}, userAvatarId: 'ghost' },
+            { name: "Contoh BG", text: "Ini contoh postingan dengan background!", time: "3 hari lalu", background: DUMMY_BACKGROUNDS[1], userAvatarId: 'fire' }
         ];
         return dummyData.map(data => {
             const backgroundData = data.background;
@@ -935,15 +1023,17 @@
                 const actionText = data.feeling.type === 'feeling' ? 'merasa' : 'sedang';
                 feelingDisplay = ` ${escapeHtml(data.feeling.emoji || '')} <span class="font-normal">${actionText} ${escapeHtml(data.feeling.text)}.</span>`;
             }
-            const mapPlaceholder = (!backgroundData && data.location)
-              ? `<div class="bg-gray-100 mt-3 rounded-lg overflow-hidden relative opacity-50"><div class="aspect-video flex items-center justify-center ..."><div class="p-4"><svg class="w-8 h-8 ..."></svg></div></div></div>` : '';
+            
+            const avatarData = DUMMY_AVATARS.find(a => a.id === data.userAvatarId);
+            const avatarInnerHtml = avatarData ? avatarData.svg : data.name[0].toUpperCase();
+            const avatarClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-gray-400 text-white";
 
-            // --- PERUBAHAN ---
-            // Sesuaikan dengan logic baru di `listenCurhatan`
             const userInfoHtml = `
               <div class="p-4">
                   <div class="flex items-center mb-3">
-                      <div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-lg mr-2">${data.name[0]}</div>
+                      <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-2 ${avatarClasses}">
+                          ${avatarInnerHtml}
+                      </div>
                       <div class="flex-grow">
                           <p class="font-semibold text-gray-900">${data.name} ${feelingDisplay} ${locationDisplay}</p>
                           <p class="text-xs text-gray-500">${data.time} · Dummy</p>
@@ -958,7 +1048,6 @@
               :
               `<div class="px-4">
                   <p class="text-gray-800 text-lg my-3 whitespace-pre-wrap">${escapeHtml(data.text)}</p>
-                  ${mapPlaceholder}
               </div>`;
             
             const buttonsHtml = `
@@ -970,11 +1059,7 @@
                   </div>
               </div>
             `;
-
-            // --- PERUBAHAN ---
-            // Selalu gabungkan dengan cara yang sama
             return `<div class="post-card mb-3 shadow-md opacity-80">${userInfoHtml}${postContentHtml}${buttonsHtml}</div>`;
-
         }).join("");
     }
 
@@ -1100,11 +1185,11 @@
         
 <div class="bg-white p-3 rounded-xl shadow-md mb-4 border border-gray-100">
             <div class="flex items-center space-x-2">
-                <div class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
-                    <span id="userStatusDisplay" class="font-semibold text-white">?</span>
+                <div id="mainAvatarDisplay" class="w-10 h-10 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-lg">
+                    <span>?</span>
                 </div>
                 <button id="goToPostBtn" class="flex-grow text-left bg-fb-gray p-2.5 rounded-full text-gray-600 hover:bg-gray-200 transition duration-150">
-                    Apa yang Anda pikirkan?
+                    Apa yang Anda pikirkan? (<span id="userStatusDisplay">...</span>)
                 </button>
             </div>
             <div class="border-t border-gray-200 mt-3 pt-3 flex justify-around">
@@ -1141,8 +1226,9 @@
 
     
 <div class="flex-grow overflow-y-auto bg-white"> 
-        <div id="postUserAvatarBlock" class="flex items-center mb-6 p-4 pb-0"> <div class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
-                <span id="postAvatarLetter" class="font-semibold text-white">?</span>
+        <div id="postUserAvatarBlock" class="flex items-center mb-6 p-4 pb-0">
+            <div id="postAvatarDisplay" class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
+                <span id="postAvatarLetter">?</span>
             </div>
             <div>
                 <p class="font-semibold text-gray-900 text-lg">
@@ -1158,7 +1244,8 @@
         <form id="curhatForm" class="flex flex-col">
             <textarea name="text" rows="10" placeholder="Apa yang Anda pikirkan?" required
               class="p-4 pt-0 border-none resize-none focus:ring-0 focus:border-transparent"
-            ></textarea> </form>
+            ></textarea> 
+        </form>
         
     </div>
 
@@ -1294,9 +1381,10 @@
           <div class="w-6"></div></header>
 
       <div class="flex-grow overflow-y-auto p-4">
-          <div classa="bg-white p-4 rounded-lg shadow-md mb-4 flex items-center">
-              <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-700 mr-4">
-                  </div>
+          <div class="bg-white p-4 rounded-lg shadow-md mb-4 flex items-center">
+              <div id="menuAvatarDisplay" class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-700 mr-4">
+                  ?
+              </div>
               <div>
                   <h3 id="menuProfileName" class="text-xl font-bold text-gray-900">Nama Pengguna</h3>
                   <p class="text-sm text-gray-600">Lihat profil Anda</p>
@@ -1330,11 +1418,16 @@
 
       <div class="flex-grow overflow-y-auto p-4">
           <div class="flex flex-col items-center bg-white p-6 rounded-lg shadow-md mb-4">
-              <div class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-4xl font-bold text-gray-700 mb-4">
-                  </div>
+              <div id="settingsAvatarDisplay" class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-4xl font-bold text-gray-700 mb-4">
+                  ?
+              </div>
               <h3 id="settingsProfileName" class="text-2xl font-bold text-gray-900">Nama Pengguna</h3>
               <p class="text-sm text-gray-600">Konexa App</p>
           </div>
+          
+          <button id="openAvatarModalBtn" class="w-full bg-white p-4 rounded-lg shadow-md text-left hover:bg-gray-50 transition duration-150 mb-4 font-semibold text-gray-800">
+              Ganti Avatar
+          </button>
           
           <form id="settingsForm" class="bg-white p-4 rounded-lg shadow-md">
               <div class="mb-4">
@@ -1349,6 +1442,24 @@
           </form>
       </div>
   </div>
+  
+  
+  <div id="avatarModal" class="hidden"> 
+      <header class="modal-header flex items-center p-4 border-b border-gray-200 shadow-sm">
+          <button id="avatarModalBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900 mx-auto">Pilih Avatar</h2>
+          <div class="w-6"></div>
+      </header>
+
+      <div class="flex-grow overflow-y-auto p-4 bg-white">
+          <div id="avatarList" class="grid grid-cols-3 gap-4">
+              <p class="col-span-3 text-center text-gray-500">Memuat avatar...</p>
+          </div>
+      </div>
+  </div>
+
 
 </body>
 </html>
