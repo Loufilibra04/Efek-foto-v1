@@ -750,7 +750,6 @@
         menuProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; 
         menuAvatarDisplay.innerHTML = innerHtml;
         menuAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} text-xl mr-4`;
-        // Klik di Menu untuk buka profil sendiri
         menuAvatarDisplay.parentElement.onclick = () => openProfilePage(user.uid);
         
         // 4. Settings View
@@ -758,7 +757,6 @@
         settingsAvatarDisplay.innerHTML = innerHtml;
         settingsAvatarDisplay.className = `w-24 h-24 ${baseClasses} ${colorClasses} text-4xl mb-4`;
         settingsNameInput.value = displayName;
-        // Klik di Settings untuk buka profil sendiri
         settingsAvatarDisplay.onclick = () => openProfilePage(user.uid);
         settingsProfileName.onclick = () => openProfilePage(user.uid);
         
@@ -1184,18 +1182,21 @@
         });
 
         mainComments.forEach(c => {
-            const commentEl = createCommentElement(c); 
+            const commentEl = createCommentElement(c, false, id, docSnap); 
             commentsContainer.appendChild(commentEl);
             
-            commentEl.querySelector('.reply-btn').addEventListener('click', () => {
-                form.dataset.replyToId = c.commentId;
-                form.dataset.replyToName = c.userName;
-                replyStatusEl.innerHTML = `Membalas <strong>${escapeHtml(c.userName)}</strong> <button type="button" class="cancel-reply-btn text-red-500 ml-2">[Batal]</button>`;
-                replyStatusEl.classList.remove('hidden');
-                commentInput.focus();
-                
-                replyStatusEl.querySelector('.cancel-reply-btn').addEventListener('click', resetReplyState);
-            });
+            const replyBtn = commentEl.querySelector('.reply-btn');
+            if (replyBtn) {
+                replyBtn.addEventListener('click', () => {
+                    form.dataset.replyToId = c.commentId;
+                    form.dataset.replyToName = c.userName;
+                    replyStatusEl.innerHTML = `Membalas <strong>${escapeHtml(c.userName)}</strong> <button type="button" class="cancel-reply-btn text-red-500 ml-2">[Batal]</button>`;
+                    replyStatusEl.classList.remove('hidden');
+                    commentInput.focus();
+                    
+                    replyStatusEl.querySelector('.cancel-reply-btn').addEventListener('click', resetReplyState);
+                });
+            }
             
             const replies = repliesMap.get(c.commentId) || [];
             if (replies.length > 0) {
@@ -1203,7 +1204,7 @@
                 repliesContainer.className = 'ml-6 space-y-3 hidden'; 
                 
                 replies.forEach(r => {
-                    const replyEl = createCommentElement(r, true); 
+                    const replyEl = createCommentElement(r, true, id, docSnap); 
                     repliesContainer.appendChild(replyEl);
                 });
                 
@@ -1246,7 +1247,8 @@
               text: commentText,
               createdAt: new Date(),
               userAvatarId: currentUserAvatarId,
-              isVerified: isCurrentUserVerified
+              isVerified: isCurrentUserVerified,
+              likes: [] // <-- PERUBAHAN: Tambahkan array likes
           };
           
           try {
@@ -1265,7 +1267,7 @@
     }
     
     // --- Helper: Buat Elemen Komentar ---
-    function createCommentElement(c, isReply = false) {
+    function createCommentElement(c, isReply = false, postId, docSnap) {
         const commenterAvatarData = DUMMY_AVATARS.find(a => a.id === c.userAvatarId);
         const commenterAvatarHtml = commenterAvatarData ? commenterAvatarData.svg : (c.userName ? c.userName[0].toUpperCase() : 'A');
         const commenterAvatarClasses = commenterAvatarData ? "bg-gray-200 text-gray-700" : "bg-gray-300";
@@ -1281,6 +1283,12 @@
         
         const el = document.createElement('div');
         el.className = 'comment-container';
+        
+        // --- PERUBAHAN: Logika Suka Komentar ---
+        const likes = c.likes || [];
+        const isLiked = auth.currentUser ? likes.includes(auth.currentUser.uid) : false;
+        const isOwnComment = auth.currentUser && c.userId === auth.currentUser.uid;
+
         el.innerHTML = `
             <div class="flex items-start">
                 <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mr-2 ${commenterAvatarClasses} shrink-0">
@@ -1296,15 +1304,75 @@
                     <p class="text-sm text-gray-700 break-words">${textContent}</p>
                 </div>
             </div>
-            ${!isReply ? `
             <div class="flex items-center text-xs font-semibold text-gray-600 gap-3 ml-9 mt-1">
                 <span class="font-normal">${timeAgo}</span>
-                <button class="hover:underline">Suka</button>
-                <button class="reply-btn hover:underline">Balas</button>
+                <button class="like-comment-btn hover:underline ${isLiked ? 'text-fb-blue' : ''}">
+                    ${isLiked ? 'Disukai' : 'Suka'} (${likes.length})
+                </button>
+                ${!isReply ? `<button class="reply-btn hover:underline">Balas</button>` : ''}
+                ${isOwnComment ? `<button class="delete-comment-btn text-red-500 hover:underline">Hapus</button>` : ''}
             </div>
-            ` : ''}
         `;
         
+        // --- PERUBAHAN: Listener untuk Suka Komentar ---
+        const likeBtn = el.querySelector('.like-comment-btn');
+        if (likeBtn) {
+            likeBtn.addEventListener('click', async () => {
+                const user = auth.currentUser;
+                if (!user) return showModalMessage("Kesalahan", "Anda harus login.");
+                
+                const postRef = doc(db, "curhatan", postId);
+                // Dapatkan data terbaru dari snapshot untuk menghindari race condition
+                const currentComments = docSnap.data().comments || [];
+                
+                const commentIndex = currentComments.findIndex(com => com.commentId === c.commentId);
+                if (commentIndex === -1) return; // Komentar tidak ditemukan
+                
+                const commentToUpdate = currentComments[commentIndex];
+                const commentLikes = commentToUpdate.likes || [];
+                const isAlreadyLiked = commentLikes.includes(user.uid);
+
+                if (isAlreadyLiked) {
+                    // Unlike
+                    commentToUpdate.likes = commentLikes.filter(uid => uid !== user.uid);
+                } else {
+                    // Like
+                    commentToUpdate.likes.push(user.uid);
+                }
+                
+                try {
+                    await updateDoc(postRef, { comments: currentComments });
+                } catch(err) {
+                    console.error("Gagal suka komentar:", err);
+                    showModalMessage("Gagal", "Gagal memperbarui suka.");
+                }
+            });
+        }
+        
+        // --- PERUBAHAN: Listener untuk Hapus Komentar ---
+        const deleteBtn = el.querySelector('.delete-comment-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                if (!confirm("Anda yakin ingin menghapus komentar ini?")) return;
+                
+                const postRef = doc(db, "curhatan", postId);
+                const currentComments = docSnap.data().comments || [];
+                
+                // Filter untuk menghapus komentar DAN semua balasannya
+                const newComments = currentComments.filter(com => {
+                    return com.commentId !== c.commentId && com.replyTo !== c.commentId;
+                });
+                
+                try {
+                    await updateDoc(postRef, { comments: newComments });
+                } catch(err) {
+                    console.error("Gagal hapus komentar:", err);
+                    showModalMessage("Gagal", "Gagal menghapus komentar.");
+                }
+            });
+        }
+        
+        // Listener untuk tombol profil
         el.querySelector('.profile-link-btn').addEventListener('click', () => {
             openProfilePage(c.userId);
         });
@@ -1378,7 +1446,6 @@
                 profileHeaderName.textContent = displayName;
                 profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
                 
-                // PERUBAHAN: Terapkan sensor email
                 profileViewEmail.textContent = censorEmail(userData.email); 
                 
                 const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
@@ -1457,7 +1524,7 @@
         .replaceAll("'", "&#039;");
     }
     
-    // --- PERUBAHAN: Helper baru untuk sensor email ---
+    // --- Helper untuk sensor email ---
     function censorEmail(email) {
       if (!email || email.indexOf('@') === -1) {
         return 'Email tersembunyi'; 
@@ -1544,7 +1611,7 @@
         <form id="registerForm" class="space-y-4">
           <input type="email" name="email" placeholder="Email baru" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
           <input type="password" name="password" placeholder="Password baru" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
-          <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
+          <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-1A50 shadow-md">
             Daftar
           </button>
         </form>
