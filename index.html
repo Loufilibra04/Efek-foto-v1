@@ -79,7 +79,7 @@
     }
     
     /* Modal fullscreen */
-    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView, #likesView {
+    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView, #likesView, #editPostView {
         background: #fff;
         display: none; 
         position: fixed;
@@ -90,7 +90,7 @@
         z-index: 1000; 
     }
     
-    #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView, #likesView {
+    #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView, #likesView, #editPostView {
         z-index: 3000; 
         background-color: #F0F2F5; /* Latar belakang abu-abu */
     }
@@ -202,7 +202,7 @@
 
     // --- State Aplikasi ---
     let currentPage = 'Auth'; 
-    let previousPage = 'Auth'; // <-- State untuk navigasi kembali
+    let previousPage = 'Auth'; 
     let selectedLocation = null; 
     let selectedFeeling = null; 
     let selectedBackground = null; 
@@ -211,6 +211,7 @@
     let userDocUnsubscribe = null; 
     let selectedChatThemeId = 'default'; 
     let unsubscribeProfilePosts = null; 
+    let currentEditingPostId = null; // <-- State untuk Edit Postingan
 
     // --- SVG Verifikasi ---
     const VERIFIED_BADGE_SVG = `
@@ -341,10 +342,16 @@
     const profileViewEmail = document.getElementById('profileViewEmail');
     const profilePostList = document.getElementById('profilePostList');
     
-    // PERUBAHAN: Elemen Halaman Suka
+    // Elemen Halaman Suka
     const likesView = document.getElementById('likesView');
     const likesViewBackBtn = document.getElementById('likesViewBackBtn');
     const likesViewList = document.getElementById('likesViewList');
+    
+    // PERUBAHAN: Elemen Halaman Edit Postingan
+    const editPostView = document.getElementById('editPostView');
+    const editPostBackBtn = document.getElementById('editPostBackBtn');
+    const editPostForm = document.getElementById('editPostForm');
+    const editPostTextarea = document.getElementById('editPostTextarea');
     
     
     // --- Inisialisasi Awal ---
@@ -356,7 +363,7 @@
 
     // --- Fungsi Navigasi Halaman ---
     function navigateTo(page) {
-      previousPage = currentPage; // <-- Simpan halaman sebelumnya
+      previousPage = currentPage; 
       currentPage = page;
       authView.style.display = 'none';
       mainView.style.display = 'none';
@@ -369,7 +376,8 @@
       avatarModal.style.display = 'none'; 
       chatSettingsModal.style.display = 'none'; 
       profileView.style.display = 'none'; 
-      likesView.style.display = 'none'; // <-- Tambah
+      likesView.style.display = 'none'; 
+      editPostView.style.display = 'none'; // <-- Tambah
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -394,9 +402,12 @@
       } else if (page === 'Profile') { 
         profileView.style.display = 'flex';
         profileView.classList.add('flex-col');
-      } else if (page === 'Likes') { // <-- Tambah
+      } else if (page === 'Likes') { 
         likesView.style.display = 'flex';
         likesView.classList.add('flex-col');
+      } else if (page === 'EditPost') { // <-- Tambah
+        editPostView.style.display = 'flex';
+        editPostView.classList.add('flex-col');
       }
     }
     
@@ -450,12 +461,37 @@
     // Navigasi Halaman Profil
     profileBackBtn.addEventListener('click', () => {
         if (unsubscribeProfilePosts) unsubscribeProfilePosts(); 
-        navigateTo(previousPage || 'Main'); // <-- Kembali ke halaman sebelumnya
+        navigateTo(previousPage || 'Main'); 
     });
     
-    // PERUBAHAN: Navigasi Halaman Suka
+    // Navigasi Halaman Suka
     likesViewBackBtn.addEventListener('click', () => {
-        navigateTo(previousPage || 'Main'); // <-- Kembali ke halaman sebelumnya
+        navigateTo(previousPage || 'Main'); 
+    });
+    
+    // PERUBAHAN: Navigasi Halaman Edit
+    editPostBackBtn.addEventListener('click', () => {
+        navigateTo(previousPage || 'Main');
+    });
+    
+    // Form Edit Postingan
+    editPostForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newText = editPostTextarea.value.trim();
+        if (!newText || !currentEditingPostId) return;
+        
+        try {
+            const postRef = doc(db, "curhatan", currentEditingPostId);
+            await updateDoc(postRef, {
+                text: newText,
+                editedAt: new Date()
+            });
+            showModalMessage("Sukses", "Postingan berhasil diperbarui.");
+            navigateTo(previousPage || 'Main');
+        } catch (err) {
+            console.error("Gagal edit postingan:", err);
+            showModalMessage("Gagal", "Tidak dapat menyimpan perubahan.");
+        }
     });
 
 
@@ -1031,6 +1067,9 @@
                           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
                       </button>
                       <div class="delete-dropdown w-40">
+                          <button type="button" class="edit-post-btn w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                              Edit Postingan
+                          </button>
                           <button type="button" class="delete-post-btn w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
                               Hapus Postingan
                           </button>
@@ -1129,7 +1168,7 @@
             }
         });
         
-        // --- PERUBAHAN: Listener Tombol Jumlah Suka ---
+        // --- Listener Tombol Jumlah Suka ---
         const likeCountBtn = div.querySelector(".like-count-btn");
         if (likeCountBtn) {
             likeCountBtn.addEventListener('click', (e) => {
@@ -1138,10 +1177,11 @@
             });
         }
         
-        // --- Listener Tombol Hapus ---
+        // --- Listener Tombol Hapus & Edit ---
         const deleteMenuBtn = div.querySelector(".delete-menu-btn");
         const deleteDropdown = div.querySelector(".delete-dropdown");
         const deletePostBtn = div.querySelector(".delete-post-btn");
+        const editPostBtn = div.querySelector(".edit-post-btn"); // <-- Tombol Edit
 
         if (isOwnPost && deleteMenuBtn) {
             deleteMenuBtn.addEventListener('click', (e) => {
@@ -1151,7 +1191,13 @@
                 });
                 deleteDropdown.classList.toggle('show');
             });
+            
+            // Listener Edit
+            editPostBtn.addEventListener('click', () => {
+                openEditPostModal(id, data.text);
+            });
 
+            // Listener Hapus
             deletePostBtn.addEventListener('click', async () => {
                 if (confirm("Anda yakin ingin menghapus postingan ini? Tindakan ini tidak bisa dibatalkan.")) {
                     try {
@@ -1493,7 +1539,7 @@
         unsubscribeProfilePosts = listenProfilePosts(userId);
     }
     
-    // --- PERUBAHAN: Fungsi untuk Membuka Daftar Suka ---
+    // --- Fungsi untuk Membuka Daftar Suka ---
     async function openLikesList(postId) {
         navigateTo('Likes');
         likesViewList.innerHTML = '<p class="text-center text-gray-500 p-4">Memuat daftar...</p>';
@@ -1514,7 +1560,7 @@
             const userPromises = likesArray.map(uid => getDoc(doc(db, "users", uid)));
             const userDocs = await Promise.all(userPromises);
             
-            likesViewList.innerHTML = ''; // Kosongkan
+            likesViewList.innerHTML = ''; 
             
             userDocs.forEach(userDoc => {
                 if (userDoc.exists()) {
@@ -1552,6 +1598,14 @@
             console.error("Gagal mengambil daftar suka:", err);
             likesViewList.innerHTML = '<p class="text-center text-red-500 p-4">Gagal memuat daftar.</p>';
         }
+    }
+    
+    // --- PERUBAHAN: Fungsi untuk Membuka Modal Edit Postingan ---
+    function openEditPostModal(postId, currentText) {
+        currentEditingPostId = postId;
+        editPostTextarea.value = currentText; // Isi textarea dengan teks lama
+        navigateTo('EditPost');
+        editPostTextarea.focus();
     }
 
 
@@ -2058,6 +2112,7 @@
       </div>
   </div>
   
+  
   <div id="likesView" class="hidden pt-16"> 
       <header class="modal-header fixed top-0 left-0 right-0 flex items-center p-4 border-b border-gray-200 shadow-sm z-10">
           <button id="likesViewBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
@@ -2069,6 +2124,26 @@
   
       <div id="likesViewList" class="flex-grow overflow-y-auto p-4">
           </div>
+  </div>
+  
+  <div id="editPostView" class="hidden pt-16">
+      <header class="modal-header fixed top-0 left-0 right-0 flex items-center justify-between p-4 border-b border-gray-200 shadow-sm z-10">
+          <button id="editPostBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900">Edit Postingan</h2>
+          <button id="submitEditBtn" form="editPostForm" class="bg-fb-blue hover:bg-opacity-80 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+              SIMPAN
+          </button>
+      </header>
+  
+      <div class="flex-grow overflow-y-auto p-4 bg-white">
+          <form id="editPostForm" class="flex-grow flex flex-col">
+              <textarea id="editPostTextarea" name="text" rows="10" required
+                class="flex-grow text-xl p-0 border-none resize-none focus:ring-0 focus:border-transparent"
+              ></textarea>
+          </form>
+      </div>
   </div>
 
 </body>
