@@ -193,7 +193,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove, deleteDoc, where } 
+    // PERUBAHAN: Menambahkan increment
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove, deleteDoc, where, increment } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
@@ -341,6 +342,7 @@
     const profileViewName = document.getElementById('profileViewName');
     const profileViewEmail = document.getElementById('profileViewEmail');
     const profilePostList = document.getElementById('profilePostList');
+    const profileViewPoints = document.getElementById('profileViewPoints'); // <-- Tambah
     
     // Elemen Halaman Suka
     const likesView = document.getElementById('likesView');
@@ -621,39 +623,34 @@
 
     // --- Fungsi Render & Logika Background ---
     
-    // PERBAIKAN: Fungsi ini telah diperbarui
     function applyPostViewBackground() {
-        const postBody = curhatForm.parentElement; // Div flex-grow
+        const postBody = curhatForm.parentElement; 
         const textarea = curhatForm.text;
         const form = curhatForm; 
         
         const bg = selectedBackground || DUMMY_BACKGROUNDS[0]; 
         
-        // Hapus semua class bg & text lama
         DUMMY_BACKGROUNDS.forEach(b => {
             postBody.classList.remove(...b.css.split(' '));
             textarea.classList.remove(...b.css.split(' '));
             textarea.classList.remove(...b.textStyle.split(' '));
         });
         
-        // Hapus class styling manual
         textarea.classList.remove('text-center', 'text-left', 'with-background', 'bg-transparent', 'flex-grow');
         postBody.classList.remove('bg-white', 'p-4', 'flex', 'items-center', 'justify-center');
-        postBody.classList.remove('flex-col'); // <-- Pembersihan baru
+        postBody.classList.remove('flex-col'); 
         form.classList.remove('flex-grow', 'flex-col'); 
         
         if (bg.id === 'default') {
-            // Tampilan Teks Polos
             postUserAvatarBlock.classList.remove('hidden');
             postBody.classList.add('bg-white'); 
-            postBody.classList.add('flex', 'flex-col'); // <-- Tambahan baru
+            postBody.classList.add('flex', 'flex-col'); 
             
             form.classList.add('flex-grow', 'flex-col'); 
             textarea.classList.add(...bg.textStyle.split(' '), 'text-left');
             textarea.classList.add('flex-grow'); 
             textarea.placeholder = 'Apa yang Anda pikirkan?';
         } else {
-            // Tampilan Teks dengan Background
             postUserAvatarBlock.classList.add('hidden');
             postBody.classList.add(...bg.css.split(' '), 'flex', 'items-center', 'justify-center');
             textarea.classList.add(...bg.textStyle.split(' '), 'text-center', 'with-background', 'bg-transparent');
@@ -857,7 +854,8 @@
             email: user.email,
             updatedAt: new Date(),
             avatarId: null,
-            isVerified: false 
+            isVerified: false,
+            points: 0 // <-- PERUBAHAN: Mulai poin dari 0
         });
         
         profileModal.style.display = "none";
@@ -959,6 +957,11 @@
 
       try {
         await addDoc(collection(db, "curhatan"), postData);
+        
+        // PERUBAHAN: Tambahkan 10 poin untuk posting
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, { points: increment(10) });
+        
         curhatForm.reset();
         selectedLocation = null; 
         selectedFeeling = null;
@@ -1337,6 +1340,11 @@
             await updateDoc(doc(db, "curhatan", id), {
               comments: arrayUnion(commentData)
             });
+            
+            // PERUBAHAN: Tambahkan 2 poin untuk komentar
+            const userRef = doc(db, "users", user.uid);
+            await updateDoc(userRef, { points: increment(2) });
+            
             e.target.reset();
             resetReplyState();
           } catch (err) {
@@ -1519,10 +1527,12 @@
                 const displayName = userData.name || "Pengguna";
                 const avatarId = userData.avatarId || null;
                 const isVerified = userData.isVerified || false;
+                const points = userData.points || 0; // <-- Ambil poin
                 
                 profileHeaderName.textContent = displayName;
                 profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
                 profileViewEmail.textContent = censorEmail(userData.email); 
+                profileViewPoints.textContent = `${points} Poin`; // <-- Tampilkan poin
                 
                 const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
                 const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
@@ -1535,6 +1545,7 @@
             } else {
                 profileViewName.innerHTML = `<span>Pengguna Tak Dikenal</span>`;
                 profileViewEmail.textContent = '';
+                profileViewPoints.textContent = '0 Poin'; // <-- Default poin
                 profileViewAvatar.innerHTML = '?';
                 profileViewAvatar.className = "w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl mb-4 bg-gray-300 text-gray-700";
             }
@@ -2112,6 +2123,7 @@
               </div>
               <h3 id="profileViewName" class="text-2xl font-bold text-gray-900 flex items-center justify-center">Nama Pengguna</h3>
               <p id="profileViewEmail" class="text-sm text-gray-600"></p>
+              <p id="profileViewPoints" class="text-lg font-bold text-fb-blue mt-2">0 Poin</p>
           </div>
           
           <h4 class="text-lg font-bold text-gray-800 my-4">Postingan Pengguna</h4>
