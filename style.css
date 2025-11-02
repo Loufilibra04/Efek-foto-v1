@@ -1,0 +1,152 @@
+/* Mengatur body default agar sesuai dengan mode terang (light mode) */
+body { 
+  font-family: 'Inter', sans-serif; 
+  background-color: #F0F2F5; /* fb-gray */
+  transition: background-color 0.3s;
+  /* Memastikan body bisa digulir */
+  min-height: 100vh;
+  overflow-y: auto; 
+}
+
+/* Mengganti warna scrollbar untuk estetika */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Input dan Button default styling (overridden by Tailwind classes) */
+input[type="text"], input[type="email"], input[type="password"], textarea { 
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    width: 100%;
+    font-size: 16px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+input:focus, textarea:focus {
+    outline: none;
+    border-color: #1877F2;
+    box-shadow: 0 0 0 1px #1877F2;
+}
+
+/* Styling khusus untuk modal agar tetap di tengah */
+#profileModal { 
+  display:none; 
+  position:fixed; 
+  inset:0; 
+  background: rgba(0,0,0,0.5); 
+  align-items:center; 
+  justify-content:center; 
+  z-index:1000; 
+}
+
+/* Modal fullscreen */
+#locationModal, #feelingModal, #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView, #likesView, #editPostView, #leaderboardView, #shopView {
+    background: #fff;
+    display: none; 
+    position: fixed;
+    inset: 0;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    z-index: 1000; 
+}
+
+#chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView, #likesView, #editPostView, #leaderboardView, #shopView {
+    z-index: 3000; 
+    background-color: #F0F2F5; /* Latar belakang abu-abu */
+}
+/* Khusus header modal, agar latar belakang putih */
+.modal-header {
+    background-color: #FFFFFF;
+}
+
+/* KARTU POSTING (untuk konsistensi tampilan seperti gambar) */
+.post-card {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    margin-bottom: 10px;
+}
+
+/* Styling Tab untuk Modal Perasaan */
+.feeling-tab.active {
+    border-color: #1877F2; /* fb-blue */
+    color: #1877F2;
+}
+
+/* --- CSS Chat Bubbles --- */
+#chatMessageList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    transition: background-color 0.3s;
+}
+.chat-message-container { display: flex; flex-direction: column; }
+.chat-bubble { max-width: 70%; padding: 8px 12px; border-radius: 18px; word-wrap: break-word; font-size: 15px; line-height: 1.4; }
+.chat-sender-name { font-size: 12px; color: #65676B; margin-left: 12px; margin-bottom: 2px; }
+.chat-message-container.received { align-items: flex-start; }
+.chat-bubble.received { background-color: #E4E6EB; color: #050505; }
+.chat-message-container.sent { align-items: flex-end; }
+.chat-bubble.sent { background-color: #0084FF; color: white; }
+
+/* Styling untuk dropdown hapus */
+.delete-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%; /* Muncul di bawah tombol */
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 10;
+    overflow: hidden;
+}
+.delete-dropdown.show {
+    display: block;
+}
+
+/* Styling untuk Nav Tab */
+.nav-tab {
+    padding: 12px;
+    width: 100%;
+    text-align: center;
+    transition: background-color 0.15s;
+}
+.nav-tab.active {
+    color: #1877F2;
+    border-bottom: 2px solid #1877F2;
+    font-weight: 600;
+}
+.nav-tab:not(.active) {
+    color: #65676B;
+}
+.nav-tab:not(.active):hover {
+    background-color: #F0F2F5;
+}
+
+/* Styling untuk Avatar GIF */
+.avatar-display-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Memastikan gambar mengisi lingkaran */
+    border-radius: 9999px; /* Membuatnya bulat */
+}
+
+/* Styling untuk Lencana */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e0e0e0;
+    border-radius: 9999px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #333;
+    margin: 2px;
+}
+.badge .icon {
+    margin-right: 4px;
+    font-size: 12px;
+}
