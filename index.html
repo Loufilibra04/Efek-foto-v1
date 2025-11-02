@@ -79,7 +79,7 @@
     }
     
     /* Modal fullscreen */
-    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView {
+    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView, #likesView {
         background: #fff;
         display: none; 
         position: fixed;
@@ -90,7 +90,7 @@
         z-index: 1000; 
     }
     
-    #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView {
+    #chatView, #menuView, #settingsView, #avatarModal, #chatSettingsModal, #profileView, #likesView {
         z-index: 3000; 
         background-color: #F0F2F5; /* Latar belakang abu-abu */
     }
@@ -202,6 +202,7 @@
 
     // --- State Aplikasi ---
     let currentPage = 'Auth'; 
+    let previousPage = 'Auth'; // <-- State untuk navigasi kembali
     let selectedLocation = null; 
     let selectedFeeling = null; 
     let selectedBackground = null; 
@@ -340,6 +341,11 @@
     const profileViewEmail = document.getElementById('profileViewEmail');
     const profilePostList = document.getElementById('profilePostList');
     
+    // PERUBAHAN: Elemen Halaman Suka
+    const likesView = document.getElementById('likesView');
+    const likesViewBackBtn = document.getElementById('likesViewBackBtn');
+    const likesViewList = document.getElementById('likesViewList');
+    
     
     // --- Inisialisasi Awal ---
     const savedTheme = localStorage.getItem('chatTheme');
@@ -350,6 +356,7 @@
 
     // --- Fungsi Navigasi Halaman ---
     function navigateTo(page) {
+      previousPage = currentPage; // <-- Simpan halaman sebelumnya
       currentPage = page;
       authView.style.display = 'none';
       mainView.style.display = 'none';
@@ -362,6 +369,7 @@
       avatarModal.style.display = 'none'; 
       chatSettingsModal.style.display = 'none'; 
       profileView.style.display = 'none'; 
+      likesView.style.display = 'none'; // <-- Tambah
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -386,6 +394,9 @@
       } else if (page === 'Profile') { 
         profileView.style.display = 'flex';
         profileView.classList.add('flex-col');
+      } else if (page === 'Likes') { // <-- Tambah
+        likesView.style.display = 'flex';
+        likesView.classList.add('flex-col');
       }
     }
     
@@ -439,7 +450,12 @@
     // Navigasi Halaman Profil
     profileBackBtn.addEventListener('click', () => {
         if (unsubscribeProfilePosts) unsubscribeProfilePosts(); 
-        navigateTo('Main');
+        navigateTo(previousPage || 'Main'); // <-- Kembali ke halaman sebelumnya
+    });
+    
+    // PERUBAHAN: Navigasi Halaman Suka
+    likesViewBackBtn.addEventListener('click', () => {
+        navigateTo(previousPage || 'Main'); // <-- Kembali ke halaman sebelumnya
     });
 
 
@@ -1044,7 +1060,9 @@
                   <button class="like-btn flex items-center ${isLiked ? 'text-fb-blue' : 'text-gray-600'} hover:text-fb-blue transition duration-150 p-2 rounded-lg">
                       <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
                       <span class="like-text">${isLiked ? 'Disukai' : 'Suka'}</span>
-                      <span class="like-count ml-1">(${likes.length})</span>
+                  </button>
+                  <button class="like-count-btn text-gray-600 hover:underline p-2 rounded-lg">
+                      (${likes.length})
                   </button>
                   <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
                       <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
@@ -1110,6 +1128,15 @@
                 showModalMessage("Gagal", "Gagal memperbarui suka.");
             }
         });
+        
+        // --- PERUBAHAN: Listener Tombol Jumlah Suka ---
+        const likeCountBtn = div.querySelector(".like-count-btn");
+        if (likeCountBtn) {
+            likeCountBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openLikesList(id);
+            });
+        }
         
         // --- Listener Tombol Hapus ---
         const deleteMenuBtn = div.querySelector(".delete-menu-btn");
@@ -1248,7 +1275,7 @@
               createdAt: new Date(),
               userAvatarId: currentUserAvatarId,
               isVerified: isCurrentUserVerified,
-              likes: [] // <-- PERUBAHAN: Tambahkan array likes
+              likes: [] 
           };
           
           try {
@@ -1284,7 +1311,6 @@
         const el = document.createElement('div');
         el.className = 'comment-container';
         
-        // --- PERUBAHAN: Logika Suka Komentar ---
         const likes = c.likes || [];
         const isLiked = auth.currentUser ? likes.includes(auth.currentUser.uid) : false;
         const isOwnComment = auth.currentUser && c.userId === auth.currentUser.uid;
@@ -1314,7 +1340,7 @@
             </div>
         `;
         
-        // --- PERUBAHAN: Listener untuk Suka Komentar ---
+        // --- Listener untuk Suka Komentar ---
         const likeBtn = el.querySelector('.like-comment-btn');
         if (likeBtn) {
             likeBtn.addEventListener('click', async () => {
@@ -1322,21 +1348,18 @@
                 if (!user) return showModalMessage("Kesalahan", "Anda harus login.");
                 
                 const postRef = doc(db, "curhatan", postId);
-                // Dapatkan data terbaru dari snapshot untuk menghindari race condition
                 const currentComments = docSnap.data().comments || [];
                 
                 const commentIndex = currentComments.findIndex(com => com.commentId === c.commentId);
-                if (commentIndex === -1) return; // Komentar tidak ditemukan
+                if (commentIndex === -1) return; 
                 
                 const commentToUpdate = currentComments[commentIndex];
                 const commentLikes = commentToUpdate.likes || [];
                 const isAlreadyLiked = commentLikes.includes(user.uid);
 
                 if (isAlreadyLiked) {
-                    // Unlike
                     commentToUpdate.likes = commentLikes.filter(uid => uid !== user.uid);
                 } else {
-                    // Like
                     commentToUpdate.likes.push(user.uid);
                 }
                 
@@ -1349,7 +1372,7 @@
             });
         }
         
-        // --- PERUBAHAN: Listener untuk Hapus Komentar ---
+        // --- Listener untuk Hapus Komentar ---
         const deleteBtn = el.querySelector('.delete-comment-btn');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', async () => {
@@ -1358,7 +1381,6 @@
                 const postRef = doc(db, "curhatan", postId);
                 const currentComments = docSnap.data().comments || [];
                 
-                // Filter untuk menghapus komentar DAN semua balasannya
                 const newComments = currentComments.filter(com => {
                     return com.commentId !== c.commentId && com.replyTo !== c.commentId;
                 });
@@ -1445,7 +1467,6 @@
                 
                 profileHeaderName.textContent = displayName;
                 profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
-                
                 profileViewEmail.textContent = censorEmail(userData.email); 
                 
                 const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
@@ -1470,6 +1491,67 @@
         navigateTo('Profile');
         
         unsubscribeProfilePosts = listenProfilePosts(userId);
+    }
+    
+    // --- PERUBAHAN: Fungsi untuk Membuka Daftar Suka ---
+    async function openLikesList(postId) {
+        navigateTo('Likes');
+        likesViewList.innerHTML = '<p class="text-center text-gray-500 p-4">Memuat daftar...</p>';
+
+        try {
+            const postDoc = await getDoc(doc(db, "curhatan", postId));
+            if (!postDoc.exists()) {
+                likesViewList.innerHTML = '<p class="text-center text-red-500 p-4">Postingan tidak ditemukan.</p>';
+                return;
+            }
+            
+            const likesArray = postDoc.data().likes || [];
+            if (likesArray.length === 0) {
+                likesViewList.innerHTML = '<p class="text-center text-gray-500 p-4">Belum ada yang menyukai postingan ini.</p>';
+                return;
+            }
+
+            const userPromises = likesArray.map(uid => getDoc(doc(db, "users", uid)));
+            const userDocs = await Promise.all(userPromises);
+            
+            likesViewList.innerHTML = ''; // Kosongkan
+            
+            userDocs.forEach(userDoc => {
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    const displayName = userData.name || 'Pengguna';
+                    const avatarId = userData.avatarId || null;
+                    const isVerified = userData.isVerified || false;
+                    
+                    const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
+                    const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
+                    const innerHtml = avatarData ? avatarData.svg : avatarLetter;
+                    const colorClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
+                    
+                    const userEl = document.createElement('div');
+                    userEl.className = 'flex items-center p-3 bg-white rounded-lg shadow-sm mb-2';
+                    userEl.innerHTML = `
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-3 ${colorClasses}">
+                            ${innerHtml}
+                        </div>
+                        <button type="button" class="profile-link-btn font-semibold hover:underline text-gray-900 flex items-center">
+                            <span>${escapeHtml(displayName)}</span>
+                            ${isVerified ? VERIFIED_BADGE_SVG : ''}
+                        </button>
+                    `;
+                    
+                    userEl.querySelector('.profile-link-btn').addEventListener('click', () => {
+                        openProfilePage(userDoc.id);
+                    });
+                    
+                    likesViewList.appendChild(userEl);
+                }
+            });
+
+        } catch (err) {
+            console.error("Gagal mengambil daftar suka:", err);
+            likesViewList.innerHTML = '<p class="text-center text-red-500 p-4">Gagal memuat daftar.</p>';
+        }
     }
 
 
@@ -1611,7 +1693,7 @@
         <form id="registerForm" class="space-y-4">
           <input type="email" name="email" placeholder="Email baru" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
           <input type="password" name="password" placeholder="Password baru" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-1 focus:ring-fb-blue">
-          <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-1A50 shadow-md">
+          <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition duration-150 shadow-md">
             Daftar
           </button>
         </form>
@@ -1974,6 +2056,19 @@
               <p class="text-center text-gray-500 mt-10">Memuat postingan...</p>
           </div>
       </div>
+  </div>
+  
+  <div id="likesView" class="hidden pt-16"> 
+      <header class="modal-header fixed top-0 left-0 right-0 flex items-center p-4 border-b border-gray-200 shadow-sm z-10">
+          <button id="likesViewBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900 mx-auto">Disukai oleh</h2>
+          <div class="w-6"></div>
+      </header>
+  
+      <div id="likesViewList" class="flex-grow overflow-y-auto p-4">
+          </div>
   </div>
 
 </body>
