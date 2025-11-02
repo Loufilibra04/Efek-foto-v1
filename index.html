@@ -26,12 +26,11 @@
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
           },
-          // PERUBAHAN: Menambahkan filter drop-shadow untuk glow
-          dropShadow: {
-            'glow-red': '0 0 10px rgba(255, 50, 50, 0.7)',
-            'glow-blue': '0 0 10px rgba(50, 150, 255, 0.7)',
-            'glow-yellow': '0 0 10px rgba(255, 230, 0, 0.7)',
-            'glow-cyan': '0 0 10px rgba(0, 255, 255, 0.7)',
+          boxShadow: {
+            'glow-red': '0 0 10px 3px rgba(255, 50, 50, 0.7)',
+            'glow-blue': '0 0 10px 3px rgba(50, 150, 255, 0.7)',
+            'glow-yellow': '0 0 10px 3px rgba(255, 230, 0, 0.7)',
+            'glow-cyan': '0 0 10px 3px rgba(0, 255, 255, 0.7)',
           }
         }
       }
@@ -136,26 +135,6 @@
     .chat-message-container.sent { align-items: flex-end; }
     .chat-bubble.sent { background-color: #0084FF; color: white; }
     
-    /* Styling untuk avatar SVG */
-    .avatar-icon {
-        width: 60%;
-        height: 60%;
-    }
-    .avatar-icon-sm {
-        width: 60%;
-        height: 60%;
-    }
-    .avatar-icon-lg {
-        width: 60%;
-        height: 60%;
-    }
-    
-    /* PERUBAHAN: Styling untuk Glow Effect */
-    .glow-red { filter: drop-shadow(0 0 10px rgba(255, 50, 50, 0.7)); }
-    .glow-blue { filter: drop-shadow(0 0 10px rgba(50, 150, 255, 0.7)); }
-    .glow-yellow { filter: drop-shadow(0 0 10px rgba(255, 230, 0, 0.7)); }
-    .glow-cyan { filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.7)); }
-    
     /* Styling untuk dropdown hapus */
     .delete-dropdown {
         display: none;
@@ -191,6 +170,30 @@
         background-color: #F0F2F5;
     }
     
+    /* Styling untuk Avatar GIF */
+    .avatar-display-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Memastikan gambar mengisi lingkaran */
+        border-radius: 9999px; /* Membuatnya bulat */
+    }
+    
+    /* Styling untuk Lencana */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: #e0e0e0;
+        border-radius: 9999px;
+        padding: 2px 8px;
+        font-size: 10px;
+        font-weight: 600;
+        color: #333;
+        margin: 2px;
+    }
+    .badge .icon {
+        margin-right: 4px;
+        font-size: 12px;
+    }
   </style>
 
   <script type="module">
@@ -221,12 +224,13 @@
     let previousPage = 'Auth'; 
     let selectedLocation = null; 
     let selectedFeeling = null; 
-    let currentUserAvatarId = null; 
+    let currentUserAvatarUrl = null; 
     let isCurrentUserVerified = false; 
     let userDocUnsubscribe = null; 
     let selectedChatThemeId = 'default'; 
     let unsubscribeProfilePosts = null; 
     let currentEditingPostId = null; 
+    let isCheckingBadges = false; // <-- State untuk mencegah loop badge
 
     // --- SVG Verifikasi ---
     const VERIFIED_BADGE_SVG = `
@@ -235,6 +239,29 @@
         <path fill="#FFFFFF" d="M9.999 17.27l-4.5-4.5a.996.996 0 111.41-1.41l3.09 3.09 7.09-7.09a.996.996 0 111.41 1.41l-8.5 8.5a.996.996 0 01-1.41 0z"/>
       </svg>
     `;
+    
+    // --- Data Avatar GIF ---
+    const GIF_AVATARS = [
+        // Gratis
+        { id: 'ghost', url: 'https://i.imgur.com/G5yDAWl.gif', cost: 0, glow: null, name: 'Hantu' },
+        { id: 'heart', url: 'https://i.imgur.com/v1KSq0a.gif', cost: 0, glow: null, name: 'Hati' },
+        // Berbayar
+        { id: 'star', url: 'https://i.imgur.com/0PzsP81.gif', cost: 100, glow: null, name: 'Bintang' },
+        { id: 'fire', url: 'https://i.imgur.com/80kAmkF.gif', cost: 1000, glow: 'shadow-glow-blue', name: 'Api Biru' },
+        { id: 'skull', url: 'https://i.imgur.com/sRk129y.gif', cost: 2500, glow: 'shadow-glow-red', name: 'Tengkorak Api' },
+        { id: 'planet', url: 'https://i.imgur.com/xqaPzRk.gif', cost: 5000, glow: 'shadow-glow-cyan', name: 'Orb Petir' },
+        { id: 'crown', url: 'https://i.imgur.com/s6k9z6r.gif', cost: 9000, glow: 'shadow-glow-yellow', name: 'Mahkota Emas' },
+        { id: 'diamond', url: 'https://i.imgur.com/xOKS69X.gif', cost: 9999, glow: 'shadow-glow-cyan', name: 'Kristal' }
+    ];
+    const DEFAULT_AVATAR_URL = GIF_AVATARS[0].url; 
+
+    // --- PERUBAHAN: Data Lencana ---
+    const BADGE_DEFINITIONS = {
+        'newbie': { name: 'Newbie', icon: '🥉', requires: (stats) => (stats.postsCount || 0) >= 1 },
+        'komentator': { name: 'Komentator', icon: '🥈', requires: (stats) => (stats.commentsCount || 0) >= 50 },
+        'veteran': { name: 'Veteran', icon: '🏆', requires: (stats) => (stats.points || 0) >= 5000 },
+        'legenda': { name: 'Legenda', icon: '💎', requires: (stats) => (stats.points || 0) >= 10000 }
+    };
 
     // --- Data Dummy ---
     const DUMMY_LOCATIONS = [
@@ -245,20 +272,6 @@
     ];
     const DUMMY_ACTIVITIES = [
         { emoji: "🎉", text: "merayakan..." }, { emoji: "✈️", text: "bepergian ke..." },
-    ];
-    
-    // PERUBAHAN: Data Avatar diperbarui dengan harga dan efek glow
-    const DUMMY_AVATARS = [
-        // Gratis
-        { id: 'ghost', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10s10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8s8 3.589 8 8s-3.589 8-8 8z"></path><path d="M12 17c2.757 0 5-2.243 5-5s-2.243-5-5-5s-5 2.243-5 5s2.243 5 5 5zm0-8c1.654 0 3 1.346 3 3s-1.346 3-3 3s-3-1.346-3-3s1.346-3 3-3z"></path><circle cx="8.5" cy="10.5" r="1.5"></circle><circle cx="15.5" cy="10.5" r="1.5"></circle></svg>`, cost: 0, glow: null, name: 'Hantu' },
-        { id: 'heart', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>`, cost: 0, glow: null, name: 'Hati' },
-        // Berbayar
-        { id: 'star', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>`, cost: 50, glow: null, name: 'Bintang' },
-        { id: 'leaf', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm-1.92 14.65c-.48-.09-.88-.41-1.04-.84l-2.03-5.21c-.13-.33-.03-.7.24-.97.27-.27.64-.37.97-.24l5.21 2.03c.43.17.75.56.84 1.04.09.48.01 1.03-.23 1.48-.25.45-.66.86-1.11 1.11-.45.24-1 .32-1.48.23zm3.5-2.23l-3.99-1.55 1.55 3.99c.1.26.02.56-.19.77-.21.21-.51.29-.77.19l-3.99-1.55c-.26-.1-.48-.32-.57-.59-.09-.26-.06-.54.08-.78l.01-.01 5.08-5.08.01-.01c.24-.14.52-.17.78-.08.27.09.49.31.59.57l1.55 3.99c.1.26.02.56-.19.77-.21.21-.51.29-.77.19z"></path></svg>`, cost: 50, glow: null, name: 'Daun' },
-        { id: 'fire', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M13.4 2.09c-.21-.06-.42-.09-.65-.09-2.19 0-3.98 1.6-4.42 3.66C6.1 7.23 5 9.97 5 13c0 3.87 3.13 7 7 7s7-3.13 7-7c0-3.03-1.1-5.77-3.35-7.34C15.15 4.1 14.18 2.8 13.4 2.09zM12 18c-2.76 0-5-2.24-5-5 0-2.34 1.25-4.4 3.08-5.45l.42-.24.16-.45C11.12 5.5 11.54 4 12.95 4c.64 0 1.15.52 1.15 1.15 0 .28-.11.55-.3.76l-.44.51-.23.47c-1.83 2.1-2.13 4.95-1.12 7.37.64 1.54 2.08 2.74 3.85 2.74 1.09 0 2.08-.43 2.84-1.13C17.43 16.7 15.1 18 12 18z"></path></svg>`, cost: 500, glow: 'glow-red', name: 'Api' },
-        { id: 'planet', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm6.27 12.57c-.43.51-1.03.85-1.7.99-1.28.27-2.61.12-3.8-.4-1.19-.52-2.22-1.32-3-2.31-.78-.99-1.29-2.18-1.45-3.43-.16-1.25.1-2.52.74-3.6.43-.72 1.04-1.32 1.77-1.71.73-.39 1.54-.6 2.37-.58 1.28.03 2.53.5 3.53 1.34.42.35.8.76 1.13 1.22.33.46.59.97.77 1.5.18.53.28 1.08.28 1.63s-.1 1.1-.28 1.63c-.18.53-.44 1.04-.77 1.5-.33.46-.71.87-1.13 1.22z"></path><path d="M15.42 16.5c-1.39.56-2.9.7-4.42.37-1.52-.33-2.9-1.1-3.96-2.22-.3-.31-.57-.65-.82-.99-.08-.11-.16-.22-.23-.34-.14-.23-.27-.47-.39-.71-.24-.5-.43-1.02-.56-1.55-.13-.53-.19-1.08-.19-1.62 0-.54.06-1.09.19-1.62.13-.53.32-1.05.56-1.55.12-.24.25-.48.39-.71.07-.12.15-.23.23-.34.25-.34.52-.68.82-.99 1.06-1.12 2.44-1.89 3.96-2.22 1.52-.33 3.03-.2 4.42.37 1.39.56 2.6 1.51 3.47 2.73.18.25.35.51.5.78.29.53.53 1.09.69 1.67.16.58.24 1.18.24 1.79s-.08 1.21-.24 1.79c-.16.58-.4 1.14-.69 1.67-.15.27-.32.53-.5.78-.87 1.22-2.08 2.17-3.47 2.73z"></path></svg>`, cost: 1000, glow: 'glow-blue', name: 'Planet' },
-        { id: 'crown', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>`, cost: 5000, glow: 'glow-yellow', name: 'Mahkota' },
-        { id: 'diamond', svg: `<svg class="avatar-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.18l-1.46 1.46-5.83 5.84L2 11.23l10 11.59 10-11.59-2.71-2.75-5.83-5.84L12 1.18zm0 2.83l1.46 1.46 5.1 5.1-1.46 1.46L12 6.85 6.91 11.95 5.45 10.49l5.1-5.1L12 4.01z"></path></svg>`, cost: 9999, glow: 'glow-cyan', name: 'Berlian' }
     ];
     
     // Data Tema Chat
@@ -283,7 +296,7 @@
     const profileForm = document.getElementById("profileForm");
     const profileNameInput = document.getElementById("profileName");
     const postFormBackBtn = document.getElementById("postFormBackBtn");
-    const postAvatarLetter = document.getElementById("postAvatarLetter");
+    // const postAvatarLetter = ...; // Dihapus
     const postUsernameText = document.getElementById("postUsernameText");
     const postUserAvatarBlock = document.getElementById('postUserAvatarBlock'); 
     
@@ -318,7 +331,7 @@
     const menuSettingsBtn = document.getElementById("menuSettingsBtn");
     const menuLogoutBtn = document.getElementById("menuLogoutBtn");
     const menuProfileName = document.getElementById("menuProfileName");
-    const menuShopBtn = document.getElementById('menuShopBtn'); // <-- Tombol Toko
+    const menuShopBtn = document.getElementById('menuShopBtn'); 
     const settingsBackBtn = document.getElementById("settingsBackBtn");
     const settingsForm = document.getElementById("settingsForm");
     const settingsNameInput = document.getElementById("settingsNameInput");
@@ -350,6 +363,7 @@
     const profileViewEmail = document.getElementById('profileViewEmail');
     const profilePostList = document.getElementById('profilePostList');
     const profileViewPoints = document.getElementById('profileViewPoints'); 
+    const profileViewBadges = document.getElementById('profileViewBadges'); // <-- Tambah
     
     // Elemen Halaman Suka
     const likesView = document.getElementById('likesView');
@@ -370,7 +384,7 @@
     const navChatBtn = document.getElementById('navChatBtn');
     const navLeaderboardBtn = document.getElementById('navLeaderboardBtn');
     
-    // PERUBAHAN: Elemen Toko Poin
+    // Elemen Toko Poin
     const shopView = document.getElementById('shopView');
     const shopBackBtn = document.getElementById('shopBackBtn');
     const shopList = document.getElementById('shopList');
@@ -402,7 +416,7 @@
       likesView.style.display = 'none'; 
       editPostView.style.display = 'none'; 
       leaderboardView.style.display = 'none'; 
-      shopView.style.display = 'none'; // <-- Tambah
+      shopView.style.display = 'none'; 
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -423,7 +437,7 @@
         settingsView.style.display = 'flex';
       } else if (page === 'Avatar') { 
         avatarModal.style.display = 'flex';
-        renderAvatarList(); // <-- Muat ulang daftar avatar
+        renderAvatarList(); 
       } else if (page === 'ChatSettings') { 
         chatSettingsModal.style.display = 'flex';
       } else if (page === 'Profile') { 
@@ -440,7 +454,7 @@
         leaderboardView.classList.add('flex-col');
         openLeaderboard();
         updateNavTabs('Leaderboard');
-      } else if (page === 'Shop') { // <-- Tambah
+      } else if (page === 'Shop') { 
         shopView.style.display = 'flex';
         shopView.classList.add('flex-col');
         openShop();
@@ -516,7 +530,7 @@
     // Navigasi Halaman Profil
     profileBackBtn.addEventListener('click', () => {
         if (unsubscribeProfilePosts) unsubscribeProfilePosts(); 
-        navigateTo(previousPage || 'Main'); 
+        navigateTo('Main'); 
     });
     
     // Navigasi Halaman Suka
@@ -529,7 +543,7 @@
         navigateTo(previousPage || 'Main');
     });
     
-    // PERUBAHAN: Navigasi Halaman Toko
+    // Navigasi Halaman Toko
     menuShopBtn.addEventListener('click', () => navigateTo('Shop'));
     shopBackBtn.addEventListener('click', () => navigateTo('Menu'));
     
@@ -679,7 +693,6 @@
     }
     
     // --- Fungsi Render & Logika Avatar ---
-    // PERUBAHAN: renderAvatarList (halaman ganti avatar)
     async function renderAvatarList() {
         avatarList.innerHTML = '<p class="col-span-3 text-center text-gray-500">Memuat avatar Anda...</p>';
         
@@ -688,31 +701,27 @@
         
         try {
             const userDoc = await getDoc(doc(db, "users", user.uid));
-            const myAvatars = userDoc.data()?.unlockedAvatars || ['ghost', 'heart']; // Default jika tidak ada
+            const myAvatarUrls = userDoc.data()?.unlockedAvatars || [DEFAULT_AVATAR_URL];
             
             avatarList.innerHTML = '';
             
-            DUMMY_AVATARS.forEach(avatar => {
-                if (!myAvatars.includes(avatar.id)) return; // Lewati jika belum dimiliki
+            myAvatarUrls.forEach(url => {
+                const avatarData = GIF_AVATARS.find(a => a.url === url) || { url: url, glow: null };
                 
                 const item = document.createElement('button');
                 item.type = 'button';
-                item.className = 'aspect-square bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-300 focus:ring-2 focus:ring-fb-blue';
-                item.innerHTML = avatar.svg.replace('avatar-icon', 'avatar-icon-lg');
+                item.className = `aspect-square bg-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-300 focus:ring-2 focus:ring-fb-blue ${avatarData.glow || ''}`;
                 
-                // Tambahkan glow jika ada
-                if (avatar.glow) {
-                    item.classList.add(avatar.glow);
-                }
+                item.innerHTML = `<img src="${url}" alt="Avatar" class="avatar-display-img">`;
                 
                 item.addEventListener('click', () => {
-                    selectAvatar(avatar.id);
+                    selectAvatar(url);
                 });
                 avatarList.appendChild(item);
             });
             
             if (avatarList.innerHTML === '') {
-                avatarList.innerHTML = '<p class="col-span-3 text-center text-gray-500">Anda belum memiliki avatar.</p>';
+                avatarList.innerHTML = '<p class="col-span-3 text-center text-gray-500">Kunjungi Toko Poin untuk mendapatkan avatar.</p>';
             }
         } catch(err) {
             console.error("Gagal memuat avatar:", err);
@@ -720,11 +729,11 @@
         }
     }
     
-    async function selectAvatar(avatarId) {
+    async function selectAvatar(avatarUrl) {
         const user = auth.currentUser;
         if (!user) return showModalMessage("Kesalahan", "Anda harus login.");
         try {
-            await updateDoc(doc(db, "users", user.uid), { avatarId: avatarId });
+            await updateDoc(doc(db, "users", user.uid), { avatarUrl: avatarUrl });
             navigateTo('Settings'); 
         } catch (err) {
             console.error("Gagal simpan avatar:", err);
@@ -799,46 +808,50 @@
         showModalMessage("Gagal masuk", err.message);
       }
     });
+    
+    function renderAvatar(el, avatarUrl, displayName, sizeClass, glowClass = '') {
+        const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
+        const baseClasses = `rounded-full flex items-center justify-center font-bold`;
+        
+        if (avatarUrl) {
+            el.innerHTML = `<img src="${avatarUrl}" alt="Avatar" class="avatar-display-img">`;
+            el.className = `${sizeClass} ${baseClasses} ${glowClass} bg-gray-200`; 
+        } else {
+            el.innerHTML = `<span>${avatarLetter}</span>`;
+            el.className = `${sizeClass} ${baseClasses} bg-fb-blue text-white`;
+        }
+    }
 
     function updateProfileUI(user, userData = {}) {
         if (!user) return;
         
         const displayName = user.displayName || user.email;
-        const avatarId = userData.avatarId || null;
+        const avatarUrl = userData.avatarUrl || null; 
         const isVerified = userData.isVerified || false; 
         
-        currentUserAvatarId = avatarId; 
+        currentUserAvatarUrl = avatarUrl; 
         isCurrentUserVerified = isVerified; 
         
-        const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
-        const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
-        
-        const innerHtml = avatarData ? avatarData.svg : avatarLetter;
-        const baseClasses = "rounded-full flex items-center justify-center font-bold";
-        const colorClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
-        const glowClass = avatarData?.glow || ''; // <-- Ambil class glow
+        const avatarData = GIF_AVATARS.find(a => a.url === avatarUrl);
+        const glowClass = avatarData?.glow || '';
         
         const checkmarkHtml = isVerified ? VERIFIED_BADGE_SVG : ''; 
 
         // 1. Main View (Header)
-        mainAvatarDisplay.innerHTML = innerHtml;
-        mainAvatarDisplay.className = `w-10 h-10 ${baseClasses} ${colorClasses} ${glowClass} text-lg`;
+        renderAvatar(mainAvatarDisplay, avatarUrl, displayName, 'w-10 h-10 text-lg', glowClass);
         
         // 2. Post View
-        postAvatarDisplay.innerHTML = innerHtml;
-        postAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} ${glowClass} text-xl mr-3`;
+        renderAvatar(postAvatarDisplay, avatarUrl, displayName, 'w-12 h-12 text-xl mr-3', glowClass);
         renderPostHeader(); 
         
         // 3. Menu View
         menuProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; 
-        menuAvatarDisplay.innerHTML = innerHtml;
-        menuAvatarDisplay.className = `w-12 h-12 ${baseClasses} ${colorClasses} ${glowClass} text-xl mr-4`;
+        renderAvatar(menuAvatarDisplay, avatarUrl, displayName, 'w-12 h-12 text-xl mr-4', glowClass);
         menuAvatarDisplay.parentElement.onclick = () => openProfilePage(user.uid);
         
         // 4. Settings View
         settingsProfileName.innerHTML = `<span>${escapeHtml(displayName)}</span>${checkmarkHtml}`; 
-        settingsAvatarDisplay.innerHTML = innerHtml;
-        settingsAvatarDisplay.className = `w-24 h-24 ${baseClasses} ${colorClasses} ${glowClass} text-4xl mb-4`;
+        renderAvatar(settingsAvatarDisplay, avatarUrl, displayName, 'w-24 h-24 text-4xl mb-4', glowClass);
         settingsNameInput.value = displayName;
         settingsAvatarDisplay.onclick = () => openProfilePage(user.uid);
         settingsProfileName.onclick = () => openProfilePage(user.uid);
@@ -846,8 +859,8 @@
         // 5. Update semua avatar di kolom komentar
         const commentAvatars = document.querySelectorAll('.currentUserCommentAvatar');
         commentAvatars.forEach(avatarEl => {
-            avatarEl.innerHTML = innerHtml;
-            avatarEl.className = `w-8 h-8 ${baseClasses} ${colorClasses} ${glowClass} text-sm currentUserCommentAvatar`;
+            renderAvatar(avatarEl, avatarUrl, displayName, 'w-8 h-8 text-sm', glowClass);
+            avatarEl.classList.add('currentUserCommentAvatar'); 
         });
     }
 
@@ -878,10 +891,12 @@
             name: name,
             email: user.email,
             updatedAt: new Date(),
-            avatarId: 'ghost', // <-- Default avatar
+            avatarUrl: DEFAULT_AVATAR_URL,
             isVerified: false,
             points: 0,
-            unlockedAvatars: ['ghost', 'heart'] // <-- Beri 2 avatar gratis
+            unlockedAvatars: [GIF_AVATARS[0].url, GIF_AVATARS[1].url],
+            postsCount: 0, // <-- Tambah
+            commentsCount: 0 // <-- Tambah
         });
         
         profileModal.style.display = "none";
@@ -969,8 +984,8 @@
         text, userId: user.uid, userName, createdAt: new Date(), comments: [], likes: []
       };
       
-      if (currentUserAvatarId) {
-          postData.userAvatarId = currentUserAvatarId;
+      if (currentUserAvatarUrl) {
+          postData.userAvatarUrl = currentUserAvatarUrl; 
       }
       postData.isVerified = isCurrentUserVerified; 
       
@@ -981,7 +996,10 @@
         await addDoc(collection(db, "curhatan"), postData);
         
         const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, { points: increment(10) });
+        await updateDoc(userRef, { 
+            points: increment(10),
+            postsCount: increment(1) // <-- Tambah
+        });
         
         curhatForm.reset();
         selectedLocation = null; 
@@ -1052,7 +1070,7 @@
         
         const locationData = data.location;
         const feelingData = data.feeling;
-        const postAvatarId = data.userAvatarId; 
+        const postAvatarUrl = data.userAvatarUrl || null; 
         const postIsVerified = data.isVerified || false; 
         const postUserId = data.userId; 
         
@@ -1078,19 +1096,17 @@
         const div = document.createElement("div");
         div.className = `post-card mb-3 shadow-md`; 
         
-        const avatarData = DUMMY_AVATARS.find(a => a.id === postAvatarId);
-        const avatarInnerHtml = avatarData ? avatarData.svg : (displayName[0] ? displayName[0].toUpperCase() : '?');
-        const avatarClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
-        const glowClass = avatarData?.glow || ''; // <-- Terapkan glow
+        const avatarData = GIF_AVATARS.find(a => a.url === postAvatarUrl);
+        const glowClass = avatarData?.glow || '';
+        const avatarEl = document.createElement('div');
+        renderAvatar(avatarEl, postAvatarUrl, displayName, 'w-10 h-10 text-lg mr-2', glowClass);
         
         const postCheckmarkHtml = postIsVerified ? VERIFIED_BADGE_SVG : ''; 
         
         const userInfoHtml = `
           <div class="p-4">
               <div class="flex items-center mb-3 relative">
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-2 ${avatarClasses} ${glowClass}">
-                      ${avatarInnerHtml}
-                  </div>
+                  ${avatarEl.outerHTML}
                   <div class="flex-grow">
                       <p class="font-semibold text-gray-900 flex items-center">
                           <button type="button" class="profile-link-btn font-semibold hover:underline">
@@ -1155,10 +1171,11 @@
         `;
         
         const user = auth.currentUser;
-        const userAvatarData = DUMMY_AVATARS.find(a => a.id === currentUserAvatarId);
-        const userAvatarInnerHtml = userAvatarData ? userAvatarData.svg : (user ? (user.displayName[0] ? user.displayName[0].toUpperCase() : '?') : 'A');
-        const userAvatarClasses = userAvatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
-        const userGlowClass = userAvatarData?.glow || ''; // <-- Terapkan glow
+        const userAvatarData = GIF_AVATARS.find(a => a.url === currentUserAvatarUrl);
+        const userGlowClass = userAvatarData?.glow || '';
+        const userAvatarEl = document.createElement('div');
+        renderAvatar(userAvatarEl, currentUserAvatarUrl, user?.displayName || 'A', 'w-8 h-8 text-sm', userGlowClass);
+        userAvatarEl.classList.add('currentUserCommentAvatar');
 
         const commentsHtml = `
           <div class="comments-area border-t border-gray-100 p-4 bg-gray-50 hidden">
@@ -1168,9 +1185,7 @@
               <div class="reply-status-container text-sm text-gray-500 mb-2 hidden"></div>
               
               <form class="commentForm flex gap-2 items-center">
-                  <div class="currentUserCommentAvatar w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${userAvatarClasses} ${userGlowClass}">
-                      ${userAvatarInnerHtml}
-                  </div>
+                  ${userAvatarEl.outerHTML}
                   <input type="text" placeholder="Tulis komentar..." required
                       class="comment-input flex-grow px-3 py-2 text-sm border-gray-300 bg-white rounded-full focus:ring-0 focus:border-fb-blue"
                   >
@@ -1359,7 +1374,7 @@
               userName: user.displayName || user.email,
               text: commentText,
               createdAt: new Date(),
-              userAvatarId: currentUserAvatarId,
+              userAvatarUrl: currentUserAvatarUrl,
               isVerified: isCurrentUserVerified,
               likes: [] 
           };
@@ -1370,7 +1385,10 @@
             });
             
             const userRef = doc(db, "users", user.uid);
-            await updateDoc(userRef, { points: increment(2) });
+            await updateDoc(userRef, { 
+                points: increment(2),
+                commentsCount: increment(1) // <-- Tambah
+            });
             
             e.target.reset();
             resetReplyState();
@@ -1385,10 +1403,15 @@
     
     // --- Helper: Buat Elemen Komentar ---
     function createCommentElement(c, isReply = false, postId, docSnap) {
-        const commenterAvatarData = DUMMY_AVATARS.find(a => a.id === c.userAvatarId);
-        const commenterAvatarHtml = commenterAvatarData ? commenterAvatarData.svg : (c.userName ? c.userName[0].toUpperCase() : 'A');
-        const commenterAvatarClasses = commenterAvatarData ? "bg-gray-200 text-gray-700" : "bg-gray-300";
-        const commenterGlowClass = commenterAvatarData?.glow || ''; // <-- Terapkan glow
+        const commenterAvatarData = GIF_AVATARS.find(a => a.url === c.userAvatarUrl);
+        const commenterGlowClass = commenterAvatarData?.glow || '';
+        
+        const el = document.createElement('div');
+        el.className = 'comment-container';
+        
+        const avatarEl = document.createElement('div');
+        renderAvatar(avatarEl, c.userAvatarUrl, c.userName || 'A', 'w-7 h-7 text-xs mr-2 shrink-0', commenterGlowClass);
+
         const commenterIsVerified = c.isVerified || false;
         const commenterCheckmarkHtml = commenterIsVerified ? VERIFIED_BADGE_SVG : '';
         
@@ -1399,18 +1422,13 @@
             textContent = `<strong class="text-fb-blue mr-1">@${escapeHtml(c.replyToName)}</strong> ${textContent}`;
         }
         
-        const el = document.createElement('div');
-        el.className = 'comment-container';
-        
         const likes = c.likes || [];
         const isLiked = auth.currentUser ? likes.includes(auth.currentUser.uid) : false;
         const isOwnComment = auth.currentUser && c.userId === auth.currentUser.uid;
 
         el.innerHTML = `
             <div class="flex items-start">
-                <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mr-2 ${commenterAvatarClasses} ${commenterGlowClass} shrink-0">
-                   ${commenterAvatarHtml.replace('avatar-icon', 'avatar-icon-sm')}
-                </div>
+                ${avatarEl.outerHTML}
                 <div class="bg-gray-200 p-2 rounded-xl flex-grow max-w-[calc(100%-40px)]">
                     <p class="font-semibold text-sm text-gray-800 flex items-center">
                         <button type="button" class="profile-link-btn font-semibold hover:underline">
@@ -1548,35 +1566,48 @@
         
         profilePostList.innerHTML = '<p class="text-center text-gray-500 mt-10">Memuat postingan...</p>';
         
+        // PERUBAHAN: Cek Lencana
+        if(auth.currentUser && userId === auth.currentUser.uid && !isCheckingBadges) {
+            checkAndGrantBadges(userId);
+        }
+        
         try {
             const userDoc = await getDoc(doc(db, "users", userId));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
                 const displayName = userData.name || "Pengguna";
-                const avatarId = userData.avatarId || null;
+                const avatarUrl = userData.avatarUrl || null;
                 const isVerified = userData.isVerified || false;
                 const points = userData.points || 0; 
+                const badges = userData.unlockedBadges || []; // <-- Ambil lencana
                 
                 profileHeaderName.textContent = displayName;
                 profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
                 profileViewEmail.textContent = censorEmail(userData.email); 
                 profileViewPoints.textContent = `${points} Poin`; 
                 
-                const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
-                const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
-                const innerHtml = avatarData ? avatarData.svg.replace('avatar-icon', 'avatar-icon-lg') : avatarLetter;
-                const baseClasses = "w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl mb-4";
-                const colorClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
-                const glowClass = avatarData?.glow || ''; // <-- Terapkan glow
-                profileViewAvatar.innerHTML = innerHtml;
-                profileViewAvatar.className = `${baseClasses} ${colorClasses} ${glowClass}`;
+                // Tampilkan Lencana
+                profileViewBadges.innerHTML = '';
+                badges.forEach(badgeId => {
+                    const badge = BADGE_DEFINITIONS[badgeId];
+                    if (badge) {
+                        const badgeEl = document.createElement('span');
+                        badgeEl.className = 'badge';
+                        badgeEl.innerHTML = `<span class="icon">${badge.icon}</span> ${badge.name}`;
+                        profileViewBadges.appendChild(badgeEl);
+                    }
+                });
+
+                const avatarData = GIF_AVATARS.find(a => a.url === avatarUrl);
+                const glowClass = avatarData?.glow || '';
+                renderAvatar(profileViewAvatar, avatarUrl, displayName, 'w-24 h-24 text-4xl mb-4', glowClass);
 
             } else {
                 profileViewName.innerHTML = `<span>Pengguna Tak Dikenal</span>`;
                 profileViewEmail.textContent = '';
                 profileViewPoints.textContent = '0 Poin'; 
-                profileViewAvatar.innerHTML = '?';
-                profileViewAvatar.className = "w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl mb-4 bg-gray-300 text-gray-700";
+                profileViewBadges.innerHTML = ''; // Kosongkan lencana
+                renderAvatar(profileViewAvatar, null, '?', 'w-24 h-24 text-4xl mb-4');
             }
         } catch (err) {
             console.error("Gagal ambil data profil:", err);
@@ -1586,6 +1617,44 @@
         navigateTo('Profile');
         
         unsubscribeProfilePosts = listenProfilePosts(userId);
+    }
+    
+    // --- PERUBAHAN: Fungsi untuk Cek & Beri Lencana ---
+    async function checkAndGrantBadges(userId) {
+        isCheckingBadges = true;
+        try {
+            const userRef = doc(db, "users", userId);
+            const userDoc = await getDoc(userRef);
+            if (!userDoc.exists()) return;
+
+            const userData = userDoc.data();
+            const currentBadges = userData.unlockedBadges || [];
+            const newBadges = [];
+            
+            // Cek setiap definisi lencana
+            for (const badgeId in BADGE_DEFINITIONS) {
+                if (!currentBadges.includes(badgeId)) { // Jika belum dimiliki
+                    const requirement = BADGE_DEFINITIONS[badgeId].requires;
+                    if (requirement(userData)) {
+                        // Pengguna memenuhi syarat
+                        newBadges.push(badgeId);
+                    }
+                }
+            }
+
+            if (newBadges.length > 0) {
+                // Ada lencana baru! Simpan ke database
+                await updateDoc(userRef, {
+                    unlockedBadges: arrayUnion(...newBadges)
+                });
+                showModalMessage("Lencana Baru Didapat!", `Anda membuka: ${newBadges.map(id => BADGE_DEFINITIONS[id].name).join(', ')}`);
+            }
+            
+        } catch (err) {
+            console.error("Gagal mengecek lencana:", err);
+        } finally {
+            isCheckingBadges = false;
+        }
     }
     
     // --- Fungsi untuk Membuka Daftar Suka ---
@@ -1616,21 +1685,20 @@
                 if (userDoc.exists()) {
                     const userData = userDoc.data();
                     const displayName = userData.name || 'Pengguna';
-                    const avatarId = userData.avatarId || null;
+                    const avatarUrl = userData.avatarUrl || null;
                     const isVerified = userData.isVerified || false;
                     
-                    const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
-                    const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
-                    const innerHtml = avatarData ? avatarData.svg : avatarLetter;
-                    const colorClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
-                    const glowClass = avatarData?.glow || ''; // <-- Terapkan glow
+                    const avatarData = GIF_AVATARS.find(a => a.url === avatarUrl);
+                    const glowClass = avatarData?.glow || '';
                     
                     const userEl = document.createElement('div');
                     userEl.className = 'flex items-center p-3 bg-white rounded-lg shadow-sm mb-2';
+                    
+                    const avatarEl = document.createElement('div');
+                    renderAvatar(avatarEl, avatarUrl, displayName, 'w-10 h-10 text-lg mr-3', glowClass);
+                    
                     userEl.innerHTML = `
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-3 ${colorClasses} ${glowClass}">
-                            ${innerHtml}
-                        </div>
+                        ${avatarEl.outerHTML}
                         <button type="button" class="profile-link-btn font-semibold hover:underline text-gray-900 flex items-center">
                             <span>${escapeHtml(displayName)}</span>
                             ${isVerified ? VERIFIED_BADGE_SVG : ''}
@@ -1679,27 +1747,26 @@
             querySnapshot.forEach(userDoc => {
                 const userData = userDoc.data();
                 const displayName = userData.name || 'Pengguna';
-                const avatarId = userData.avatarId || null;
+                const avatarUrl = userData.avatarUrl || null;
                 const isVerified = userData.isVerified || false;
                 const points = userData.points || 0;
                 
-                const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
-                const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
-                const innerHtml = avatarData ? avatarData.svg : avatarLetter;
-                const colorClasses = avatarData ? "bg-gray-200 text-gray-700" : "bg-fb-blue text-white";
-                const glowClass = avatarData?.glow || ''; // <-- Terapkan glow
+                const avatarData = GIF_AVATARS.find(a => a.url === avatarUrl);
+                const glowClass = avatarData?.glow || '';
                 
                 const rankColor = rank === 1 ? 'text-yellow-500' : (rank === 2 ? 'text-gray-400' : (rank === 3 ? 'text-yellow-700' : 'text-gray-500'));
                 
                 const userEl = document.createElement('div');
                 userEl.className = 'flex items-center p-3 bg-white rounded-lg shadow-sm mb-2';
+                
+                const avatarEl = document.createElement('div');
+                renderAvatar(avatarEl, avatarUrl, displayName, 'w-10 h-10 text-lg mr-3', glowClass);
+                
                 userEl.innerHTML = `
                     <div class="w-10 text-center">
                         <span class="text-xl font-bold ${rankColor}">#${rank}</span>
                     </div>
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-3 ${colorClasses} ${glowClass}">
-                        ${innerHtml}
-                    </div>
+                    ${avatarEl.outerHTML}
                     <div class="flex-grow">
                         <button type="button" class="profile-link-btn font-semibold hover:underline text-gray-900 flex items-center">
                             <span>${escapeHtml(displayName)}</span>
@@ -1725,7 +1792,7 @@
         }
     }
     
-    // --- PERUBAHAN: Fungsi untuk Membuka Toko Poin ---
+    // --- Fungsi untuk Membuka Toko Poin ---
     async function openShop() {
         shopList.innerHTML = '<p class="col-span-3 text-center text-gray-500">Memuat toko...</p>';
         const user = auth.currentUser;
@@ -1743,13 +1810,13 @@
             shopUserPoints.textContent = `${myPoints} Poin Anda`;
             shopList.innerHTML = '';
             
-            DUMMY_AVATARS.forEach(avatar => {
+            GIF_AVATARS.forEach(avatar => {
                 const item = document.createElement('div');
                 item.className = 'flex flex-col items-center gap-2 p-4 bg-white rounded-lg shadow-md';
                 
                 const avatarEl = document.createElement('div');
                 avatarEl.className = `w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold bg-gray-200 text-gray-700 ${avatar.glow || ''}`;
-                avatarEl.innerHTML = avatar.svg.replace('avatar-icon', 'avatar-icon-lg');
+                avatarEl.innerHTML = `<img src="${avatar.url}" alt="${avatar.name}" class="avatar-display-img">`;
                 
                 const nameEl = document.createElement('p');
                 nameEl.className = 'font-semibold';
@@ -1759,14 +1826,14 @@
                 btnEl.type = 'button';
                 btnEl.className = 'w-full py-2 px-3 rounded-lg font-semibold text-sm';
                 
-                if (myAvatars.includes(avatar.id)) {
+                if (myAvatars.includes(avatar.url)) {
                     btnEl.className += ' bg-green-500 text-white cursor-not-allowed';
                     btnEl.textContent = 'Dimiliki';
                     btnEl.disabled = true;
                 } else if (myPoints >= avatar.cost) {
                     btnEl.className += ' bg-fb-blue text-white hover:bg-opacity-80';
                     btnEl.textContent = `Beli (${avatar.cost} Poin)`;
-                    btnEl.onclick = () => buyAvatar(avatar.id, avatar.cost);
+                    btnEl.onclick = () => buyAvatar(avatar.url, avatar.cost);
                 } else {
                     btnEl.className += ' bg-gray-300 text-gray-600 cursor-not-allowed';
                     btnEl.textContent = `${avatar.cost} Poin`;
@@ -1785,8 +1852,8 @@
         }
     }
     
-    // --- PERUBAHAN: Fungsi untuk Membeli Avatar ---
-    async function buyAvatar(avatarId, cost) {
+    // --- Fungsi untuk Membeli Avatar ---
+    async function buyAvatar(avatarUrl, cost) {
         const user = auth.currentUser;
         if (!user) return;
         
@@ -1798,7 +1865,7 @@
             const userRef = doc(db, "users", user.uid);
             await updateDoc(userRef, {
                 points: increment(-cost),
-                unlockedAvatars: arrayUnion(avatarId)
+                unlockedAvatars: arrayUnion(avatarUrl)
             });
             
             showModalMessage("Sukses!", "Avatar berhasil dibeli.");
@@ -2028,7 +2095,7 @@
 <div class="flex-grow overflow-y-auto bg-white flex flex-col"> 
         <div id="postUserAvatarBlock" class="flex items-center mb-6 p-4 pb-0">
             <div id="postAvatarDisplay" class="w-12 h-12 rounded-full bg-fb-blue flex items-center justify-center text-white font-bold text-xl mr-3">
-                <span id="postAvatarLetter">?</span>
+                <span>?</span>
             </div>
             <div>
                 <p class="font-semibold text-gray-900 text-lg flex items-center">
@@ -2312,6 +2379,8 @@
               <h3 id="profileViewName" class="text-2xl font-bold text-gray-900 flex items-center justify-center">Nama Pengguna</h3>
               <p id="profileViewEmail" class="text-sm text-gray-600"></p>
               <p id="profileViewPoints" class="text-lg font-bold text-fb-blue mt-2">0 Poin</p>
+              <div id="profileViewBadges" class="flex flex-wrap justify-center items-center mt-2">
+                  </div>
           </div>
           
           <h4 class="text-lg font-bold text-gray-800 my-4">Postingan Pengguna</h4>
