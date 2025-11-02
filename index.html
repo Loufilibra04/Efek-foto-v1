@@ -193,7 +193,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    // PERUBAHAN: Menambahkan increment
     import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, setDoc, limitToLast, getDoc, arrayRemove, deleteDoc, where, increment } 
       from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
@@ -342,7 +341,7 @@
     const profileViewName = document.getElementById('profileViewName');
     const profileViewEmail = document.getElementById('profileViewEmail');
     const profilePostList = document.getElementById('profilePostList');
-    const profileViewPoints = document.getElementById('profileViewPoints'); // <-- Tambah
+    const profileViewPoints = document.getElementById('profileViewPoints'); 
     
     // Elemen Halaman Suka
     const likesView = document.getElementById('likesView');
@@ -463,16 +462,19 @@
     // Navigasi Halaman Profil
     profileBackBtn.addEventListener('click', () => {
         if (unsubscribeProfilePosts) unsubscribeProfilePosts(); 
-        navigateTo(previousPage || 'Main'); 
+        // PERBAIKAN: Selalu kembali ke 'Main' untuk memutus loop
+        navigateTo('Main'); 
     });
     
     // Navigasi Halaman Suka
     likesViewBackBtn.addEventListener('click', () => {
+        // Kembali ke halaman sebelumnya (yang seharusnya 'Profile')
         navigateTo(previousPage || 'Main'); 
     });
     
     // Navigasi Halaman Edit
     editPostBackBtn.addEventListener('click', () => {
+        // Kembali ke halaman sebelumnya (yang seharusnya 'Profile' atau 'Main')
         navigateTo(previousPage || 'Main');
     });
     
@@ -489,6 +491,7 @@
                 editedAt: new Date()
             });
             showModalMessage("Sukses", "Postingan berhasil diperbarui.");
+            // Kembali ke halaman tempat kita mengedit, yang disimpan di previousPage
             navigateTo(previousPage || 'Main');
         } catch (err) {
             console.error("Gagal edit postingan:", err);
@@ -855,7 +858,7 @@
             updatedAt: new Date(),
             avatarId: null,
             isVerified: false,
-            points: 0 // <-- PERUBAHAN: Mulai poin dari 0
+            points: 0 // <-- Poin mulai dari 0
         });
         
         profileModal.style.display = "none";
@@ -958,7 +961,7 @@
       try {
         await addDoc(collection(db, "curhatan"), postData);
         
-        // PERUBAHAN: Tambahkan 10 poin untuk posting
+        // Tambahkan 10 poin untuk posting
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, { points: increment(10) });
         
@@ -1341,7 +1344,7 @@
               comments: arrayUnion(commentData)
             });
             
-            // PERUBAHAN: Tambahkan 2 poin untuk komentar
+            // Tambahkan 2 poin untuk komentar
             const userRef = doc(db, "users", user.uid);
             await updateDoc(userRef, { points: increment(2) });
             
@@ -1527,12 +1530,12 @@
                 const displayName = userData.name || "Pengguna";
                 const avatarId = userData.avatarId || null;
                 const isVerified = userData.isVerified || false;
-                const points = userData.points || 0; // <-- Ambil poin
+                const points = userData.points || 0; 
                 
                 profileHeaderName.textContent = displayName;
                 profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
                 profileViewEmail.textContent = censorEmail(userData.email); 
-                profileViewPoints.textContent = `${points} Poin`; // <-- Tampilkan poin
+                profileViewPoints.textContent = `${points} Poin`; 
                 
                 const avatarData = DUMMY_AVATARS.find(a => a.id === avatarId);
                 const avatarLetter = displayName[0] ? displayName[0].toUpperCase() : '?';
@@ -1545,7 +1548,7 @@
             } else {
                 profileViewName.innerHTML = `<span>Pengguna Tak Dikenal</span>`;
                 profileViewEmail.textContent = '';
-                profileViewPoints.textContent = '0 Poin'; // <-- Default poin
+                profileViewPoints.textContent = '0 Poin'; 
                 profileViewAvatar.innerHTML = '?';
                 profileViewAvatar.className = "w-24 h-24 rounded-full flex items-center justify-center font-bold text-4xl mb-4 bg-gray-300 text-gray-700";
             }
