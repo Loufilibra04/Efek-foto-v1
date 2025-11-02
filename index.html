@@ -468,7 +468,7 @@
     
     // Navigasi Halaman Suka
     likesViewBackBtn.addEventListener('click', () => {
-        // Kembali ke halaman sebelumnya (yang seharusnya 'Profile')
+        // Kembali ke halaman sebelumnya (yang seharusnya 'Profile' atau 'Main')
         navigateTo(previousPage || 'Main'); 
     });
     
@@ -858,7 +858,7 @@
             updatedAt: new Date(),
             avatarId: null,
             isVerified: false,
-            points: 0 // <-- Poin mulai dari 0
+            points: 0 
         });
         
         profileModal.style.display = "none";
@@ -961,7 +961,6 @@
       try {
         await addDoc(collection(db, "curhatan"), postData);
         
-        // Tambahkan 10 poin untuk posting
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, { points: increment(10) });
         
@@ -1108,23 +1107,26 @@
         const likes = data.likes || [];
         const isLiked = auth.currentUser ? likes.includes(auth.currentUser.uid) : false;
         
+        // --- PERUBAHAN: Tombol-tombol di-modifikasi ---
         const buttonsHtml = `
           <div class="p-4 pt-0">
               <div class="flex justify-around border-t border-gray-200 mt-4 pt-2">
-                  <button class="like-btn flex items-center ${isLiked ? 'text-fb-blue' : 'text-gray-600'} hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
-                      <span class="like-text">${isLiked ? 'Disukai' : 'Suka'}</span>
-                  </button>
-                  <button class="like-count-btn text-gray-600 hover:underline p-2 rounded-lg">
-                      (${likes.length})
-                  </button>
+                  <div class="flex items-center">
+                      <button class="like-btn flex items-center ${isLiked ? 'text-fb-blue' : 'text-gray-600'} hover:text-fb-blue transition duration-150 p-2 rounded-lg">
+                          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v5M6 10h2l3 3m-3 0v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7a1 1 0 011-1h2z"></path></svg>
+                      </button>
+                      <button class="like-count-btn text-sm font-semibold text-gray-600 hover:underline p-1">
+                          (${likes.length})
+                      </button>
+                  </div>
+                  
                   <button class="comment-toggle flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                      Komentar (${(data.comments || []).length})
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.735-1.248l-3.376 1.099A.999.999 0 013 18.5V12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                      <span class="ml-1 text-sm font-semibold text-gray-600">(${(data.comments || []).length})</span>
                   </button>
+                  
                   <button class="flex items-center text-gray-600 hover:text-fb-blue transition duration-150 p-2 rounded-lg">
-                      <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
-                      Bagikan
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.024-3.535a6.66 6.66 0 000-4.634l-6.024-3.535M18 12a3 3 0 110-6 3 3 0 010 6zm0 0a3 3 0 110-6 3 3 0 010 6z"></path></svg>
                   </button>
               </div>
           </div>
@@ -1344,7 +1346,6 @@
               comments: arrayUnion(commentData)
             });
             
-            // Tambahkan 2 poin untuk komentar
             const userRef = doc(db, "users", user.uid);
             await updateDoc(userRef, { points: increment(2) });
             
