@@ -246,9 +246,7 @@
     // --- PERUBAHAN: Data Lencana ---
     const BADGE_DEFINITIONS = {
         'newbie': { name: 'Newbie', icon: '🥉', requires: (stats) => (stats.postsCount || 0) >= 1 },
-        'komentator': { name: 'Komentator', icon: '🥈', requires: (stats) => (stats.commentsCount || 0) >= 50 },
-        'veteran': { name: 'Veteran', icon: '🏆', requires: (stats) => (stats.points || 0) >= 5000 },
-        'legenda': { name: 'Legenda', icon: '💎', requires: (stats) => (stats.points || 0) >= 10000 }
+        'komentator': { name: 'Komentator', icon: '🥈', requires: (stats) => (stats.commentsCount || 0) >= 50 }
     };
 
     // --- Data Dummy ---
@@ -346,7 +344,6 @@
     const profileViewEmail = document.getElementById('profileViewEmail');
     const profilePostList = document.getElementById('profilePostList');
     const profileViewPoints = document.getElementById('profileViewPoints'); 
-    const profileViewBadges = document.getElementById('profileViewBadges'); // <-- Tambah
     
     // Elemen Halaman Suka
     const likesView = document.getElementById('likesView');
@@ -1482,24 +1479,13 @@
                 const avatarUrl = userData.avatarUrl || null;
                 const isVerified = userData.isVerified || false;
                 const points = userData.points || 0; 
-                const badges = userData.unlockedBadges || []; // <-- Ambil lencana
                 
                 profileHeaderName.textContent = displayName;
                 profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
                 profileViewEmail.textContent = censorEmail(userData.email); 
                 profileViewPoints.textContent = `${points} Poin`; 
                 
-                // Tampilkan Lencana
-                profileViewBadges.innerHTML = '';
-                badges.forEach(badgeId => {
-                    const badge = BADGE_DEFINITIONS[badgeId];
-                    if (badge) {
-                        const badgeEl = document.createElement('span');
-                        badgeEl.className = 'badge';
-                        badgeEl.innerHTML = `<span class="icon">${badge.icon}</span> ${badge.name}`;
-                        profileViewBadges.appendChild(badgeEl);
-                    }
-                });
+                // Tampilkan Lencana (Dihapus)
 
                 renderAvatar(profileViewAvatar, avatarUrl, displayName, 'w-24 h-24 text-4xl mb-4');
 
@@ -1507,7 +1493,6 @@
                 profileViewName.innerHTML = `<span>Pengguna Tak Dikenal</span>`;
                 profileViewEmail.textContent = '';
                 profileViewPoints.textContent = '0 Poin'; 
-                profileViewBadges.innerHTML = ''; // Kosongkan lencana
                 renderAvatar(profileViewAvatar, null, '?', 'w-24 h-24 text-4xl mb-4');
             }
         } catch (err) {
@@ -2167,8 +2152,7 @@
               <h3 id="profileViewName" class="text-2xl font-bold text-gray-900 flex items-center justify-center">Nama Pengguna</h3>
               <p id="profileViewEmail" class="text-sm text-gray-600"></p>
               <p id="profileViewPoints" class="text-lg font-bold text-fb-blue mt-2">0 Poin</p>
-              <div id="profileViewBadges" class="flex flex-wrap justify-center items-center mt-2">
-                  </div>
+              
           </div>
           
           <h4 class="text-lg font-bold text-gray-800 my-4">Postingan Pengguna</h4>
