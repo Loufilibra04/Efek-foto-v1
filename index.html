@@ -85,7 +85,7 @@
     }
     
     /* Modal fullscreen */
-    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #chatSettingsModal, #profileView, #likesView, #editPostView {
+    #locationModal, #feelingModal, #chatView, #menuView, #settingsView, #chatSettingsModal, #profileView, #likesView, #editPostView, #leaderboardView {
         background: #fff;
         display: none; 
         position: fixed;
@@ -96,7 +96,7 @@
         z-index: 1000; 
     }
     
-    #chatView, #menuView, #settingsView, #chatSettingsModal, #profileView, #likesView, #editPostView {
+    #chatView, #menuView, #settingsView, #chatSettingsModal, #profileView, #likesView, #editPostView, #leaderboardView {
         z-index: 3000; 
         background-color: #F0F2F5; /* Latar belakang abu-abu */
     }
@@ -247,6 +247,8 @@
     const BADGE_DEFINITIONS = {
         'newbie': { name: 'Newbie', icon: '🥉', requires: (stats) => (stats.postsCount || 0) >= 1 },
         'komentator': { name: 'Komentator', icon: '🥈', requires: (stats) => (stats.commentsCount || 0) >= 50 },
+        'veteran': { name: 'Veteran', icon: '🏆', requires: (stats) => (stats.points || 0) >= 5000 },
+        'legenda': { name: 'Legenda', icon: '💎', requires: (stats) => (stats.points || 0) >= 10000 }
     };
 
     // --- Data Dummy ---
@@ -343,6 +345,7 @@
     const profileViewName = document.getElementById('profileViewName');
     const profileViewEmail = document.getElementById('profileViewEmail');
     const profilePostList = document.getElementById('profilePostList');
+    const profileViewPoints = document.getElementById('profileViewPoints'); 
     const profileViewBadges = document.getElementById('profileViewBadges'); // <-- Tambah
     
     // Elemen Halaman Suka
@@ -356,9 +359,13 @@
     const editPostForm = document.getElementById('editPostForm');
     const editPostTextarea = document.getElementById('editPostTextarea');
     
-    // Elemen Halaman Peringkat (Dihapus)
+    // Elemen Halaman Peringkat
+    const leaderboardView = document.getElementById('leaderboardView');
+    const leaderboardBackBtn = document.getElementById('leaderboardBackBtn');
+    const leaderboardList = document.getElementById('leaderboardList');
     const navFeedBtn = document.getElementById('navFeedBtn');
     const navChatBtn = document.getElementById('navChatBtn');
+    const navLeaderboardBtn = document.getElementById('navLeaderboardBtn');
     
     // Elemen Toko Poin (Dihapus)
     
@@ -386,6 +393,7 @@
       profileView.style.display = 'none'; 
       likesView.style.display = 'none'; 
       editPostView.style.display = 'none'; 
+      leaderboardView.style.display = 'none'; 
 
       if (page === 'Auth') {
         authView.style.display = 'block';
@@ -415,12 +423,17 @@
       } else if (page === 'EditPost') { 
         editPostView.style.display = 'flex';
         editPostView.classList.add('flex-col');
+      } else if (page === 'Leaderboard') { 
+        leaderboardView.style.display = 'flex';
+        leaderboardView.classList.add('flex-col');
+        openLeaderboard();
+        updateNavTabs('Leaderboard');
       }
     }
     
     // Fungsi untuk update tab navigasi
     function updateNavTabs(activeTab) {
-        const tabs = [navFeedBtn, navChatBtn];
+        const tabs = [navFeedBtn, navChatBtn, navLeaderboardBtn];
         tabs.forEach(tab => {
             tab.classList.remove('active');
             tab.classList.add('nav-tab'); 
@@ -430,6 +443,8 @@
             navFeedBtn.classList.add('active');
         } else if (activeTab === 'Chat') {
             navChatBtn.classList.add('active');
+        } else if (activeTab === 'Leaderboard') {
+            navLeaderboardBtn.classList.add('active');
         }
     }
     
@@ -467,8 +482,10 @@
     chatSettingsBtn.addEventListener('click', () => navigateTo('ChatSettings'));
     chatSettingsBackBtn.addEventListener('click', () => navigateTo('Chat'));
     
-    // Navigasi Feed
+    // Navigasi Feed & Leaderboard
     navFeedBtn.addEventListener('click', () => navigateTo('Main'));
+    navLeaderboardBtn.addEventListener('click', () => navigateTo('Leaderboard'));
+    leaderboardBackBtn.addEventListener('click', () => navigateTo('Main'));
     
     // Navigasi Menu & Pengaturan
     menuBackBtn.addEventListener('click', () => navigateTo('Main'));
@@ -787,6 +804,7 @@
             updatedAt: new Date(),
             avatarUrl: DEFAULT_AVATAR_URL,
             isVerified: false,
+            points: 0,
             postsCount: 0, // <-- Tambah
             commentsCount: 0 // <-- Tambah
         });
@@ -888,7 +906,8 @@
         
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, { 
-            postsCount: increment(1) // <-- Hapus poin
+            points: increment(10),
+            postsCount: increment(1) 
         });
         
         curhatForm.reset();
@@ -1272,7 +1291,8 @@
             
             const userRef = doc(db, "users", user.uid);
             await updateDoc(userRef, { 
-                commentsCount: increment(1) // <-- Hapus poin
+                points: increment(2),
+                commentsCount: increment(1) 
             });
             
             e.target.reset();
@@ -1461,11 +1481,13 @@
                 const displayName = userData.name || "Pengguna";
                 const avatarUrl = userData.avatarUrl || null;
                 const isVerified = userData.isVerified || false;
+                const points = userData.points || 0; 
                 const badges = userData.unlockedBadges || []; // <-- Ambil lencana
                 
                 profileHeaderName.textContent = displayName;
                 profileViewName.innerHTML = `<span>${escapeHtml(displayName)}</span> ${isVerified ? VERIFIED_BADGE_SVG : ''}`;
                 profileViewEmail.textContent = censorEmail(userData.email); 
+                profileViewPoints.textContent = `${points} Poin`; 
                 
                 // Tampilkan Lencana
                 profileViewBadges.innerHTML = '';
@@ -1484,6 +1506,7 @@
             } else {
                 profileViewName.innerHTML = `<span>Pengguna Tak Dikenal</span>`;
                 profileViewEmail.textContent = '';
+                profileViewPoints.textContent = '0 Poin'; 
                 profileViewBadges.innerHTML = ''; // Kosongkan lencana
                 renderAvatar(profileViewAvatar, null, '?', 'w-24 h-24 text-4xl mb-4');
             }
@@ -1602,7 +1625,67 @@
         editPostTextarea.focus();
     }
     
-    // --- Fungsi untuk Membuka Halaman Peringkat (Dihapus) ---
+    // --- Fungsi untuk Membuka Halaman Peringkat ---
+    async function openLeaderboard() {
+        navigateTo('Leaderboard');
+        leaderboardList.innerHTML = '<p class="text-center text-gray-500 p-4">Memuat papan peringkat...</p>';
+        
+        try {
+            const q = query(collection(db, "users"), orderBy("points", "desc"), limit(10));
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                leaderboardList.innerHTML = '<p class="text-center text-gray-500 p-4">Belum ada pengguna dengan poin.</p>';
+                return;
+            }
+            
+            leaderboardList.innerHTML = ''; // Kosongkan daftar
+            
+            let rank = 1;
+            querySnapshot.forEach(userDoc => {
+                const userData = userDoc.data();
+                const displayName = userData.name || 'Pengguna';
+                const avatarUrl = userData.avatarUrl || null;
+                const isVerified = userData.isVerified || false;
+                const points = userData.points || 0;
+                
+                const rankColor = rank === 1 ? 'text-yellow-500' : (rank === 2 ? 'text-gray-400' : (rank === 3 ? 'text-yellow-700' : 'text-gray-500'));
+                
+                const userEl = document.createElement('div');
+                userEl.className = 'flex items-center p-3 bg-white rounded-lg shadow-sm mb-2';
+                
+                const avatarEl = document.createElement('div');
+                renderAvatar(avatarEl, avatarUrl, displayName, 'w-10 h-10 text-lg mr-3');
+                
+                userEl.innerHTML = `
+                    <div class="w-10 text-center">
+                        <span class="text-xl font-bold ${rankColor}">#${rank}</span>
+                    </div>
+                    ${avatarEl.outerHTML}
+                    <div class="flex-grow">
+                        <button type="button" class="profile-link-btn font-semibold hover:underline text-gray-900 flex items-center">
+                            <span>${escapeHtml(displayName)}</span>
+                            ${isVerified ? VERIFIED_BADGE_SVG : ''}
+                        </button>
+                    </div>
+                    <div class="text-lg font-bold text-fb-blue">
+                        ${points} Poin
+                    </div>
+                `;
+                
+                userEl.querySelector('.profile-link-btn').addEventListener('click', () => {
+                    openProfilePage(userDoc.id);
+                });
+                
+                leaderboardList.appendChild(userEl);
+                rank++;
+            });
+
+        } catch (err) {
+            console.error("Gagal mengambil papan peringkat:", err);
+            leaderboardList.innerHTML = '<p class="text-center text-red-500 p-4">Gagal memuat papan peringkat. Pastikan Anda sudah membuat indeks di Firestore.</p>';
+        }
+    }
     
     // --- Fungsi untuk Membuka Toko Poin (Dihapus) ---
     
@@ -1776,6 +1859,7 @@
       <div class="flex justify-around border-t border-gray-200 text-gray-500">
         <button id="navFeedBtn" class="nav-tab active">Feed Curhat</button>
         <button id="navChatBtn" class="nav-tab">Pesan Global</button>
+        <button id="navLeaderboardBtn" class="nav-tab">Peringkat</button>
       </div>
     </nav>
 
@@ -2082,6 +2166,7 @@
               </div>
               <h3 id="profileViewName" class="text-2xl font-bold text-gray-900 flex items-center justify-center">Nama Pengguna</h3>
               <p id="profileViewEmail" class="text-sm text-gray-600"></p>
+              <p id="profileViewPoints" class="text-lg font-bold text-fb-blue mt-2">0 Poin</p>
               <div id="profileViewBadges" class="flex flex-wrap justify-center items-center mt-2">
                   </div>
           </div>
@@ -2125,6 +2210,19 @@
               ></textarea>
           </form>
       </div>
+  </div>
+  
+  <div id="leaderboardView" class="hidden pt-16">
+      <header class="modal-header fixed top-0 left-0 right-0 flex items-center p-4 border-b border-gray-200 shadow-sm z-10">
+          <button id="leaderboardBackBtn" class="text-gray-700 hover:text-fb-blue p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          </button>
+          <h2 class="text-xl font-bold text-gray-900 mx-auto">Papan Peringkat</h2>
+          <div class="w-6"></div>
+      </header>
+  
+      <div id="leaderboardList" class="flex-grow overflow-y-auto p-4">
+          </div>
   </div>
 
 </body>
